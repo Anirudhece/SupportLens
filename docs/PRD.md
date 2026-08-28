@@ -58,7 +58,7 @@ SupportLens must make this knowledge searchable through natural-language questio
 - Evaluate retrieval separately from answer generation.
 - Support measurable experimentation with chunking, retrieval, reranking, and confidence thresholds.
 - Build the core RAG pipeline explicitly before adopting high-level RAG frameworks.
-- Use ChromaDB as the primary vector database and retrieval system.
+- Use PostgreSQL and pgvector as the primary storage and vector-retrieval system.
 
 ## 6. Non-goals
 
@@ -68,7 +68,7 @@ The following are outside the initial project scope:
 - Training a foundation model or embedding model from scratch.
 - Hiding the retrieval pipeline behind LangChain or LlamaIndex in the first versions.
 - Treating an LLM judge as perfect ground truth.
-- Adding a second vector database before the ChromaDB implementation is understood and evaluated.
+- Adding a dedicated vector database before the pgvector implementation is understood and evaluated.
 - Implementing unrelated SaaS features before the core ingestion, retrieval, generation, and evaluation workflow is reliable.
 
 ## 7. Functional requirements
@@ -81,7 +81,7 @@ The system must accept knowledge-base documents, including PDF, Markdown, and pl
 2. Clean and normalize the extracted content.
 3. Split the content into retrievable chunks.
 4. Generate an embedding for each chunk.
-5. Store the chunk, embedding, and source metadata in ChromaDB.
+5. Store the chunk, embedding, and source metadata in PostgreSQL with pgvector.
 6. Expose ingestion status and the resulting chunk count.
 
 ### FR-2: Chunk metadata
@@ -187,7 +187,7 @@ The system must preserve enough retrieval evidence to explain why a source was s
 
 Document loading, chunking, embedding, storage, retrieval, prompt construction, answer generation, and evaluation must remain explicit components with clear boundaries.
 
-The retrieval layer should remain replaceable so that a future managed-vector-database comparison does not require rewriting the entire RAG pipeline.
+The retrieval layer should be replaceable so that a future Qdrant exercise does not require rewriting the entire RAG pipeline.
 
 ### Testability and reproducibility
 
@@ -207,7 +207,7 @@ Authentication, authorization, document access controls, retention, and deployme
 
 ## 10. Initial MVP scope
 
-The first usable version should demonstrate the complete basic vector-RAG path with ChromaDB:
+The first usable version should demonstrate the complete basic vector-RAG path with PostgreSQL and pgvector:
 
 ```text
 Document upload
@@ -216,7 +216,7 @@ Text extraction and chunking
       ↓
 Embedding generation
       ↓
-ChromaDB storage and vector retrieval
+PostgreSQL + pgvector storage
       ↓
 Question embedding and vector retrieval
       ↓
@@ -225,13 +225,13 @@ Grounded answer with basic citations
 Visible retrieved chunks and scores
 ```
 
-The MVP does not need hybrid search, reranking, a second vector database, or a database migration. Later retrieval capabilities will be introduced and evaluated through approved milestones.
+The MVP does not need hybrid search, reranking, an approximate vector index, or a replacement vector database. Those capabilities will be introduced and evaluated in later milestones.
 
 ## 11. Planned capability progression
 
 The detailed milestones and their measurable gates will be defined separately in `docs/SupportLens_plan.md`. The current intended progression is:
 
-1. Basic vector RAG with ChromaDB.
+1. Basic vector RAG with PostgreSQL and pgvector.
 2. Chunk-size and overlap experiments.
 3. Metadata filtering.
 4. Hybrid keyword and vector retrieval.
@@ -239,7 +239,7 @@ The detailed milestones and their measurable gates will be defined separately in
 6. Reliable citations and grounded fallback behaviour.
 7. Golden dataset and evaluation metrics.
 8. Automated regression testing.
-9. Optional managed-vector-database comparison after the ChromaDB implementation is understood and evaluated.
+9. Optional retrieval-layer migration from pgvector to Qdrant after the primary implementation is understood.
 
 ## 12. Success criteria
 
@@ -257,8 +257,7 @@ Numeric quality and performance thresholds will be established in milestone plan
 
 ## 13. Constraints and confirmed decisions
 
-- ChromaDB is the primary vector database and retrieval system.
-- Selecting ChromaDB does not finalize the embedding model or provider.
+- PostgreSQL with pgvector is the primary database and vector store.
 - The first implementations will not use LangChain or LlamaIndex.
 - Core RAG stages must be implemented explicitly and remain understandable.
 - Evaluation is part of the product, not an optional final enhancement.
@@ -270,10 +269,9 @@ The following decisions require research or milestone planning before implementa
 
 - Backend language and web framework.
 - Frontend framework and UI architecture.
-- Initial embedding model and provider.
-- ChromaDB automatic embedding versus embedding generation explicitly managed by the Express backend.
+- Embedding model and provider.
 - Answer-generation model and provider.
-- Local ChromaDB versus Chroma Cloud deployment and persistence strategy.
+- Local versus hosted PostgreSQL environment.
 - Document storage approach in addition to extracted chunks.
 - Initial chunking parameters and tokenizer strategy.
 - Keyword-search implementation and hybrid-score fusion method.
