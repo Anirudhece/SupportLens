@@ -2,9 +2,9 @@
 
 ## Status
 
-**Planned**
+**In progress**
 
-Implementation must not begin until the unresolved questions in this document have been discussed, the decisions have been recorded, and the complete scope has received explicit user approval.
+The required discussions, exact implementation scope, files, dependencies, and pass/fail gate were approved by the user before implementation began.
 
 ## Goal
 
@@ -56,9 +56,9 @@ The required discussions currently have the following status:
 
 For each question, the agent must explain the practical options and trade-offs, record the user's decision in this document, and update the implementation scope before requesting approval.
 
-## Proposed implementation scope
+## Approved implementation scope
 
-The following scope reflects the resolved architecture decisions but remains provisional until the exact file and dependency plan receives final approval.
+The following scope reflects the resolved architecture decisions and the implementation plan approved by the user.
 
 ### Repository foundation
 
@@ -275,24 +275,132 @@ The exact files within these directories remain subject to the approved Mileston
 - Limit Milestone 0 to connectivity checks. Local and Cloud collections remain independent; collection creation, ingestion, synchronization, and data copying are deferred.
 - Require observed real heartbeats from both Local and Chroma Cloud before marking the approved dual-target feature complete.
 
-All required architecture discussions are now resolved. The exact implementation files and dependency versions must still be presented for final approval before implementation begins.
+All required architecture discussions and the exact implementation plan are approved.
 
 ## Approved files and dependencies
 
-To be completed before implementation begins.
+### Runtime
+
+- Node.js `24.20.0`, recorded in `.nvmrc` and constrained to Node 24 in the root package manifest.
+- npm workspaces at `frontend` and `backend`.
+
+### Exact dependencies
+
+| Workspace | Dependency | Version |
+| --- | --- | --- |
+| Root development | `concurrently` | `10.0.5` |
+| Frontend | `next` | `16.3.3` |
+| Frontend | `react` | `19.2.8` |
+| Frontend | `react-dom` | `19.2.8` |
+| Backend | `express` | `5.2.1` |
+| Backend | `cors` | `2.8.6` |
+| Backend | `chromadb` | `3.5.0` |
+| Backend development | `vitest` | `4.1.11` |
+| Backend development | `supertest` | `7.2.2` |
+
+Dependency versions are pinned exactly. Axios, dotenv, Zod, Nodemon, ESLint, Prettier, LangChain, and LlamaIndex are not included.
+
+### Files approved for creation
+
+```text
+package.json
+package-lock.json
+.nvmrc
+.gitignore
+frontend/package.json
+frontend/next.config.js
+frontend/.env.example
+frontend/src/app/layout.js
+frontend/src/app/page.js
+frontend/src/app/globals.css
+frontend/src/components/ServiceStatus.js
+frontend/src/apiHandlers/healthApi.js
+backend/package.json
+backend/.env.example
+backend/src/app.js
+backend/src/server.js
+backend/src/config/environment.js
+backend/src/clients/chromaClients.js
+backend/src/routes/healthRoutes.js
+backend/src/middleware/errorHandler.js
+backend/tests/health.test.js
+backend/tests/chroma.local.integration.test.js
+backend/tests/chroma.cloud.integration.test.js
+```
+
+### Files approved for modification
+
+- `README.md`, after commands and behaviour have been verified.
+- `docs/Milestones/Milestone_0_Environment_Setup.md`, for status and actual evidence.
+- `docs/SupportLens_plan.md`, to synchronize milestone status.
 
 ## Implementation record
 
-To be completed during and after implementation. Do not record expected work as completed work.
+Implementation began after the user approved the exact plan on 2026-08-29. Application-code work was delegated to a GPT-5.6 Luna implementation agent as required by `AGENTS.md`.
+
+Implemented work:
+
+- Created the root npm workspace with `frontend` and `backend` workspaces, exact dependency pins, Node 24 enforcement, and a committed lockfile.
+- Added individual development commands for Next.js, Express, and local ChromaDB plus one `concurrently`-powered root command.
+- Added the Next.js App Router status page, Local/Chroma Cloud radio controls, frontend status components, and exported API-call functions under `frontend/src/apiHandlers`.
+- Added the testable Express application and separate server entry point.
+- Added centralized environment access, loopback-default API binding, restricted CORS, liveness and bounded dependency-health routes, safe error handling, and backend-owned Local and Cloud Chroma clients.
+- Added deterministic Supertest/Vitest coverage and separate real Local and Cloud integration commands.
+- Configured local ChromaDB persistence under `.local/chroma` and protected generated state and secrets through `.gitignore`.
+- Disabled Next.js automatic agent-rule file generation so nested generated instructions cannot override the repository's approved `AGENTS.md` workflow.
+
+Milestone 0 remains **In progress** because the required real Chroma Cloud heartbeat has not run without user-configured credentials, and interactive browser verification remains pending.
 
 ## Verification evidence
 
-To be completed from actual command output and observed behaviour.
+Evidence collected on 2026-08-29:
+
+- `nvm install 24.20.0` installed Node.js `v24.20.0` with npm `11.19.0`; both versions were observed after activation.
+- `npm install` produced `package-lock.json`; `npm ls --depth=0` confirmed every approved direct dependency at its exact pinned version.
+- npm reported 179 audited packages and 0 vulnerabilities after the successful install retry.
+- The original `npm test` run passed 1 test file and all 6 deterministic backend tests.
+- `npm run build` completed the Next.js `16.3.3` production build successfully and generated the `/` route as static content.
+- `npm run dev:chroma` started ChromaDB at `http://localhost:8000`, reported `.local/chroma` as its data path, and created `.local/chroma/chroma.sqlite3`.
+- `npm run test:integration:local` passed its real Express-to-Local-ChromaDB heartbeat test.
+- `npm run dev` started ChromaDB, Express on port `4000`, and Next.js on port `3000` from one command; interrupting it stopped the grouped services.
+- Direct HTTP verification returned `200` from the Next.js page and Express liveness endpoint.
+- Direct HTTP verification returned `200` with `{"target":"local","status":"connected"}` for the Local dependency check.
+- Direct HTTP verification returned `503` with `{"target":"cloud","status":"not-configured"}` when Cloud credentials were absent.
+- Responses to approved-origin requests contained `Access-Control-Allow-Origin: http://localhost:3000`.
+- The rendered HTML contained the Local and Chroma Cloud radio controls, with Local selected by default, plus frontend, API, and ChromaDB status cards.
+- `npm run test:integration:cloud` failed intentionally and safely because `backend/.env` and the three required Cloud values were absent. No secret value was printed.
+- `git diff --check` passed, no authored CommonJS pattern was found, no real Chroma API key was present, generated Next agent files were absent after restart, and `.local`, `.next`, and real environment files were confirmed ignored.
+
+Additional review-fix evidence collected on 2026-08-30:
+
+- `npm test` passed 1 test file and all 9 backend tests under Node.js `v24.20.0` and npm `11.19.0`.
+- The expanded tests verify the `127.0.0.1` bind-host default, explicit host and timeout overrides, and a secret-safe HTTP `503` when a heartbeat never resolves.
+- A real backend start reported `SupportLens API listening on http://127.0.0.1:4000`, and a direct loopback request to `/health` returned `{"status":"ok","service":"backend"}`.
+- The dependency-health response is bounded to `5000` milliseconds by default and can be configured through `HEALTH_HEARTBEAT_TIMEOUT_MS`.
+
+Still required before completion:
+
+- Configure `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` in the ignored `backend/.env` file and pass `npm run test:integration:cloud` against the real account.
+- Complete an interactive browser check of the radio-button transitions and hydrated status states. The current in-app browser connection could not start because its installed browser service referenced a missing older plugin cache; HTTP and rendered-HTML checks passed, but they do not replace the approved interactive check.
 
 ## Problems encountered and decisions made
 
-To be completed when real issues or meaningful decisions occur.
+- The host shell initially used Node.js `v25.9.0`, which did not satisfy the approved Node 24 runtime. Node `v24.20.0` was installed and activated through the existing NVM setup before creating the lockfile.
+- The first npm installation attempt left a partial `node_modules` tree without a lockfile. Re-running the same approved installation completed successfully, produced the lockfile, resolved the exact dependency tree, and reported no vulnerabilities; no unapproved dependency was introduced.
+- Supertest initially failed with `listen EPERM` because the restricted execution sandbox blocked ephemeral local sockets. The identical test command passed all assertions when rerun with localhost socket permission.
+- Next.js generated `frontend/AGENTS.md` and `frontend/CLAUDE.md` during its first development start. These files were outside the approved scope and could supersede root instructions, so `agentRules: false` was added to `next.config.js`; the generated files were removed and did not return after restart.
+- The Cloud test was designed to fail clearly rather than skip successfully when credentials are missing. This prevents the milestone gate from producing a false positive.
+- The browser-control plugin failed before navigation because of a local plugin cache mismatch. The application endpoints and rendered HTML were verified independently, but interactive UI behaviour remains unclaimed.
+- Code review found that an unbounded ChromaDB heartbeat could leave the dependency-health response pending and that Express did not explicitly bind to loopback. The implementation now bounds the API wait and defaults `BACKEND_HOST` to `127.0.0.1`.
+- ChromaDB JavaScript client `3.5.0` does not accept a per-call abort signal for `heartbeat()`. The API stops waiting after its configured timeout, while an already-started SDK operation may finish in the background; the implementation and comments state this limitation instead of claiming transport cancellation.
 
 ## Lessons learned
 
-To be completed after implementation and verification.
+- Liveness and dependency readiness answer different operational questions: Express can be alive even when one Chroma target is unavailable.
+- Injecting Chroma clients into the Express application keeps endpoint tests deterministic while preserving separate real integration gates.
+- A frontend infrastructure selector must send only an allowlisted target; credentials and client construction remain backend responsibilities.
+- Local and Cloud targets can share a narrow health interface without implying that their collections or data are synchronized.
+- Exact runtime and package pins plus a committed lockfile make the environment reproducible, but actual command execution is still necessary to expose installation and runtime-specific failures.
+- A skipped or placeholder integration test is not evidence that an external service works; the real Cloud gate must require real credentials and a successful heartbeat.
+- Health checks need explicit response-time bounds. A dependency call that never settles is operationally different from a fast connection refusal, and both must produce a usable API result.
+- Binding a local development API explicitly to loopback is separate from CORS: CORS controls browser response access, while the bind address controls which network interfaces accept connections.

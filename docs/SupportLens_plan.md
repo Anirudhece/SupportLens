@@ -31,7 +31,7 @@ An AI agent must not silently fill in an unresolved implementation decision mere
 
 | Milestone | Status | Purpose | Detailed gate |
 | --- | --- | --- | --- |
-| [Milestone 0 — Environment Setup](Milestones/Milestone_0_Environment_Setup.md) | Planned | Establish the JavaScript workspace and prove local connectivity across the frontend, backend, and ChromaDB. | Defined in the milestone document; implementation questions still require discussion and approval. |
+| [Milestone 0 — Environment Setup](Milestones/Milestone_0_Environment_Setup.md) | In progress | Establish the JavaScript workspace and prove Local and Cloud ChromaDB connectivity across the frontend and backend. | Local implementation and checks pass; real Cloud heartbeat and interactive browser verification remain pending. |
 | Milestone 1 — Basic Vector RAG | Planned | Build the first explicit ingestion, retrieval, answer-generation, citation, and retrieval-visibility path. | To be defined after its pre-implementation discussion. |
 | Milestone 2 — Chunking Experiments | Planned | Compare chunk-size and overlap strategies using fixed evaluation questions. | To be defined after a baseline exists. |
 | Milestone 3 — Metadata Filtering | Planned | Add and verify metadata-aware retrieval. | To be defined during milestone planning. |
