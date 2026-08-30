@@ -4,7 +4,7 @@ SupportLens is a production-oriented RAG knowledge assistant being built as an e
 
 ## Milestone 0 status
 
-The local development path is implemented and verified:
+Milestone 0 is complete. The local development path is implemented and verified:
 
 ```text
 Next.js frontend
@@ -14,7 +14,7 @@ Express backend
 Local ChromaDB
 ```
 
-The Chroma Cloud path is implemented but still requires local account credentials and a successful real heartbeat before Milestone 0 can be marked complete.
+The Local and Chroma Cloud paths are implemented and heartbeat-verified. Manual browser verification also confirmed the Local default, the Cloud transition, and the transition back to Local with connected states.
 
 ## Prerequisites
 

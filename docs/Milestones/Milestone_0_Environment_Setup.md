@@ -2,9 +2,9 @@
 
 ## Status
 
-**In progress**
+**Complete**
 
-The required discussions, exact implementation scope, files, dependencies, and pass/fail gate were approved by the user before implementation began.
+All approved implementation and verification gates passed on 2026-08-30.
 
 ## Goal
 
@@ -349,7 +349,7 @@ Implemented work:
 - Configured local ChromaDB persistence under `.local/chroma` and protected generated state and secrets through `.gitignore`.
 - Disabled Next.js automatic agent-rule file generation so nested generated instructions cannot override the repository's approved `AGENTS.md` workflow.
 
-Milestone 0 remains **In progress** because the required real Chroma Cloud heartbeat has not run without user-configured credentials, and interactive browser verification remains pending.
+Milestone 0 is **Complete**. Real Local and Chroma Cloud heartbeats passed, and the user completed the interactive browser verification.
 
 ## Verification evidence
 
@@ -377,11 +377,14 @@ Additional review-fix evidence collected on 2026-08-30:
 - The expanded tests verify the `127.0.0.1` bind-host default, explicit host and timeout overrides, and a secret-safe HTTP `503` when a heartbeat never resolves.
 - A real backend start reported `SupportLens API listening on http://127.0.0.1:4000`, and a direct loopback request to `/health` returned `{"status":"ok","service":"backend"}`.
 - The dependency-health response is bounded to `5000` milliseconds by default and can be configured through `HEALTH_HEARTBEAT_TIMEOUT_MS`.
+- The user configured the three required Chroma Cloud values in the ignored backend environment file. Their presence was checked without displaying any credential value.
+- `npm run test:integration:cloud` passed its real Express-to-Chroma-Cloud heartbeat test: 1 test file and 1 test passed in 1.76 seconds under Node.js `v24.20.0`.
+- The combined local services were started again before the browser retry and stopped cleanly afterward.
+- The user manually verified the hydrated status page in a browser: Local was selected and connected by default, Chroma Cloud became connected when selected, and switching back to Local restored the connected Local state.
 
-Still required before completion:
+## Completion gate result
 
-- Configure `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` in the ignored `backend/.env` file and pass `npm run test:integration:cloud` against the real account.
-- Complete an interactive browser check of the radio-button transitions and hydrated status states. The current in-app browser connection could not start because its installed browser service referenced a missing older plugin cache; HTTP and rendered-HTML checks passed, but they do not replace the approved interactive check.
+All ten approved Milestone 0 pass/fail checks are satisfied. No Milestone 0 verification work remains.
 
 ## Problems encountered and decisions made
 
@@ -390,7 +393,7 @@ Still required before completion:
 - Supertest initially failed with `listen EPERM` because the restricted execution sandbox blocked ephemeral local sockets. The identical test command passed all assertions when rerun with localhost socket permission.
 - Next.js generated `frontend/AGENTS.md` and `frontend/CLAUDE.md` during its first development start. These files were outside the approved scope and could supersede root instructions, so `agentRules: false` was added to `next.config.js`; the generated files were removed and did not return after restart.
 - The Cloud test was designed to fail clearly rather than skip successfully when credentials are missing. This prevents the milestone gate from producing a false positive.
-- The browser-control plugin failed before navigation because of a local plugin cache mismatch. The application endpoints and rendered HTML were verified independently, but interactive UI behaviour remains unclaimed.
+- The browser-control plugin failed before navigation because of a local plugin cache mismatch. A retry after the Cloud heartbeat passed reached the same failure: the installed browser plugin was current, but its service attempted to load a missing older cached version. The user subsequently completed the approved interactive check manually, so this external tooling problem no longer blocks the milestone.
 - Code review found that an unbounded ChromaDB heartbeat could leave the dependency-health response pending and that Express did not explicitly bind to loopback. The implementation now bounds the API wait and defaults `BACKEND_HOST` to `127.0.0.1`.
 - ChromaDB JavaScript client `3.5.0` does not accept a per-call abort signal for `heartbeat()`. The API stops waiting after its configured timeout, while an already-started SDK operation may finish in the background; the implementation and comments state this limitation instead of claiming transport cancellation.
 
