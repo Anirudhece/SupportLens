@@ -1,0 +1,22 @@
+{
+  "name": "@supportlens/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "vitest run tests/health.test.js",
+    "test:local": "vitest run tests/chroma.local.integration.test.js",
+    "test:cloud": "vitest run tests/chroma.cloud.integration.test.js"
+  },
+  "dependencies": {
+    "chromadb": "3.5.0",
+    "cors": "2.8.6",
+    "express": "5.2.1"
+  },
+  "devDependencies": {
+    "supertest": "7.2.2",
+    "vitest": "4.1.11"
+  }
+}

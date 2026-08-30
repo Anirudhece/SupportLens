@@ -17,6 +17,9 @@
   - `docs/Research/Research_MN_<Topic>.md` for experiments, comparisons, and architectural decisions.
 - Before coding a milestone:
   - Explain its goal, reason, planned work, concepts being learned, and pass/fail gate.
+  - Identify every unresolved product, architecture, dependency, data, testing, and operational question that could affect the milestone.
+  - Discuss those questions, options, and trade-offs with the user; record the resulting decisions; and obtain explicit approval before implementation begins.
+  - Do not silently choose an unanswered implementation detail merely to start coding.
   - Present the implementation and documentation plan for approval.
   - Create or update the milestone document only after approval.
 - During implementation:

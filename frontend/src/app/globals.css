@@ -1,0 +1,175 @@
+:root {
+  color-scheme: dark;
+  --background: #0c111d;
+  --panel: #151d2d;
+  --panel-border: #293754;
+  --text: #edf3ff;
+  --muted: #9aa9c4;
+  --accent: #8bd9c2;
+  --warning: #f5c66b;
+  --danger: #ff8e8e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: radial-gradient(circle at top right, #172843 0, var(--background) 48%);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.shell {
+  width: min(960px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 72px 0;
+}
+
+.hero {
+  max-width: 680px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 16px;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1.1rem;
+}
+
+.intro {
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.target-panel,
+.status-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.target-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 56px;
+  padding: 24px;
+}
+
+.target-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+input {
+  accent-color: var(--accent);
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.status-card {
+  min-height: 170px;
+  padding: 22px;
+}
+
+.status-card h2 {
+  margin-bottom: 20px;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.status-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status-connected .status-dot {
+  background: var(--accent);
+}
+
+.status-unreachable .status-dot {
+  background: var(--danger);
+}
+
+.status-not-configured .status-dot,
+.status-checking .status-dot {
+  background: var(--warning);
+}
+
+.status-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .shell {
+    padding: 40px 0;
+  }
+
+  .target-panel,
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .target-panel {
+    display: block;
+  }
+
+  .target-options {
+    margin-top: 20px;
+  }
+
+  .status-grid {
+    display: grid;
+  }
+}
