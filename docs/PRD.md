@@ -2,7 +2,7 @@
 
 ## Document status
 
-- **Status:** Initial draft
+- **Status:** Active product requirements; Milestone 1 complete
 - **Product:** SupportLens — Production RAG Knowledge Assistant
 - **Purpose:** Define the product problem, scope, requirements, constraints, and success criteria before implementation begins.
 - **Source of truth:** This PRD is derived from `docs/PROJECT_CONTEXT.md`. Undecided implementation details remain open rather than being assumed.
@@ -58,7 +58,7 @@ SupportLens must make this knowledge searchable through natural-language questio
 - Evaluate retrieval separately from answer generation.
 - Support measurable experimentation with chunking, retrieval, reranking, and confidence thresholds.
 - Build the core RAG pipeline explicitly before adopting high-level RAG frameworks.
-- Use PostgreSQL and pgvector as the primary storage and vector-retrieval system.
+- Use ChromaDB as the primary vector-storage and retrieval system while keeping embedding generation application-owned and replaceable.
 
 ## 6. Non-goals
 
@@ -68,7 +68,7 @@ The following are outside the initial project scope:
 - Training a foundation model or embedding model from scratch.
 - Hiding the retrieval pipeline behind LangChain or LlamaIndex in the first versions.
 - Treating an LLM judge as perfect ground truth.
-- Adding a dedicated vector database before the pgvector implementation is understood and evaluated.
+- Replacing ChromaDB or introducing another vector database without measured evidence that the current system cannot meet a documented requirement.
 - Implementing unrelated SaaS features before the core ingestion, retrieval, generation, and evaluation workflow is reliable.
 
 ## 7. Functional requirements
@@ -81,7 +81,7 @@ The system must accept knowledge-base documents, including PDF, Markdown, and pl
 2. Clean and normalize the extracted content.
 3. Split the content into retrievable chunks.
 4. Generate an embedding for each chunk.
-5. Store the chunk, embedding, and source metadata in PostgreSQL with pgvector.
+5. Store the chunk, application-generated embedding, and source metadata in ChromaDB.
 6. Expose ingestion status and the resulting chunk count.
 
 ### FR-2: Chunk metadata
@@ -207,7 +207,7 @@ Authentication, authorization, document access controls, retention, and deployme
 
 ## 10. Initial MVP scope
 
-The first usable version should demonstrate the complete basic vector-RAG path with PostgreSQL and pgvector:
+The first usable version should demonstrate the complete basic vector-RAG path with ChromaDB:
 
 ```text
 Document upload
@@ -216,7 +216,7 @@ Text extraction and chunking
       ↓
 Embedding generation
       ↓
-PostgreSQL + pgvector storage
+Local or Chroma Cloud vector storage
       ↓
 Question embedding and vector retrieval
       ↓
@@ -225,13 +225,13 @@ Grounded answer with basic citations
 Visible retrieved chunks and scores
 ```
 
-The MVP does not need hybrid search, reranking, an approximate vector index, or a replacement vector database. Those capabilities will be introduced and evaluated in later milestones.
+The MVP does not need hybrid search, reranking, a replacement vector database, background ingestion, or production object storage. Those capabilities will be introduced or reconsidered only in later approved milestones.
 
 ## 11. Planned capability progression
 
 The detailed milestones and their measurable gates will be defined separately in `docs/SupportLens_plan.md`. The current intended progression is:
 
-1. Basic vector RAG with PostgreSQL and pgvector.
+1. Basic vector RAG with application-owned embeddings and ChromaDB.
 2. Chunk-size and overlap experiments.
 3. Metadata filtering.
 4. Hybrid keyword and vector retrieval.
@@ -239,7 +239,7 @@ The detailed milestones and their measurable gates will be defined separately in
 6. Reliable citations and grounded fallback behaviour.
 7. Golden dataset and evaluation metrics.
 8. Automated regression testing.
-9. Optional retrieval-layer migration from pgvector to Qdrant after the primary implementation is understood.
+9. Optional managed-vector-database comparison after the ChromaDB implementation is understood and evaluated.
 
 ## 12. Success criteria
 
@@ -257,7 +257,11 @@ Numeric quality and performance thresholds will be established in milestone plan
 
 ## 13. Constraints and confirmed decisions
 
-- PostgreSQL with pgvector is the primary database and vector store.
+- ChromaDB is the primary vector database and retrieval system.
+- Milestone 1 uses application-owned local `all-MiniLM-L6-v2` embeddings and supplies precomputed vectors to ChromaDB.
+- Milestone 1 uses `gemini-3.5-flash-lite` for single-turn, non-streaming grounded answer generation without external tools or search.
+- Local and Chroma Cloud collections remain independent and must use compatible embedding and collection configurations.
+- Development with Gemini's free tier is limited to synthetic or otherwise non-sensitive content.
 - The first implementations will not use LangChain or LlamaIndex.
 - Core RAG stages must be implemented explicitly and remain understandable.
 - Evaluation is part of the product, not an optional final enhancement.
@@ -267,13 +271,11 @@ Numeric quality and performance thresholds will be established in milestone plan
 
 The following decisions require research or milestone planning before implementation:
 
-- Backend language and web framework.
-- Frontend framework and UI architecture.
-- Embedding model and provider.
-- Answer-generation model and provider.
-- Local versus hosted PostgreSQL environment.
-- Document storage approach in addition to extracted chunks.
-- Initial chunking parameters and tokenizer strategy.
+- Whether a later embedding experiment should replace the MiniLM baseline.
+- Whether measured answer or guardrail failures justify comparing Flash-Lite with a larger Gemini model.
+- Production document and manifest storage beyond the approved local filesystem baseline, including a possible object store such as S3.
+- Production operational metadata storage beyond the Milestone 1 JSON registry.
+- Evidence-based confidence thresholds for unsupported questions.
 - Keyword-search implementation and hybrid-score fusion method.
 - Reranking model or service.
 - Authentication, authorization, and knowledge-base tenancy.

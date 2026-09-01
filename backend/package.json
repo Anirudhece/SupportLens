@@ -6,14 +6,24 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/server.js",
     "start": "node --env-file-if-exists=.env src/server.js",
-    "test": "vitest run tests/health.test.js",
+    "test": "vitest run tests --exclude tests/chroma.local.integration.test.js --exclude tests/chroma.cloud.integration.test.js",
+    "seed": "node --env-file-if-exists=.env scripts/seedCorpus.js",
+    "eval": "node --env-file-if-exists=.env scripts/runEval.js",
     "test:local": "vitest run tests/chroma.local.integration.test.js",
-    "test:cloud": "vitest run tests/chroma.cloud.integration.test.js"
+    "test:cloud": "vitest run tests/chroma.cloud.integration.test.js",
+    "test:rag:local": "RUN_LIVE_RAG=true vitest run tests/chroma.rag.integration.test.js",
+    "test:rag:cloud": "RUN_LIVE_RAG_CLOUD=true vitest run tests/chroma.rag.integration.test.js"
   },
   "dependencies": {
+    "@chroma-core/default-embed": "0.1.9",
+    "@google/genai": "2.19.0",
+    "@huggingface/transformers": "3.8.1",
     "chromadb": "3.5.0",
     "cors": "2.8.6",
-    "express": "5.2.1"
+    "express": "5.2.1",
+    "multer": "2.3.0",
+    "pdf-parse": "2.4.5",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "supertest": "7.2.2",

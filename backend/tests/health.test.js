@@ -98,6 +98,7 @@ describe('backend configuration', () => {
 
     expect(config.host).toBe('127.0.0.1');
     expect(config.health.heartbeatTimeoutMs).toBe(5000);
+    expect(config.generation.maxOutputTokens).toBe(1024);
   });
 
   it('allows deployment environments to override the bind host and timeout', () => {
@@ -108,5 +109,10 @@ describe('backend configuration', () => {
 
     expect(config.host).toBe('0.0.0.0');
     expect(config.health.heartbeatTimeoutMs).toBe(2500);
+  });
+
+  it('rejects an unsafe generation output limit', () => {
+    expect(loadConfig({ GENERATION_MAX_OUTPUT_TOKENS: '999999' }).generation.maxOutputTokens).toBe(1024);
+    expect(loadConfig({ GENERATION_MAX_OUTPUT_TOKENS: '2048' }).generation.maxOutputTokens).toBe(2048);
   });
 });
