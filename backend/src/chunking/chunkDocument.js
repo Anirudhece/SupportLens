@@ -58,7 +58,23 @@ function splitOversizedWord(word, maxTokens, tokenizer, chunk) {
 }
 
 function splitSentences(text) {
-  return text.match(/[^.!?\n]+[.!?]?(?:\s+|$)/g)?.map((part) => part.trim()).filter(Boolean) || [text.trim()];
+  const sentences = [];
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const nextCharacter = text[index + 1];
+    if (!'.!?'.includes(character)) continue;
+    // A period inside a version, URL, filename, or identifier is content, not
+    // sentence punctuation. Only split at punctuation that terminates a
+    // sentence (followed by whitespace or the end of the text).
+    if (nextCharacter && !/\s/.test(nextCharacter)) continue;
+    const sentence = text.slice(start, index + 1).trim();
+    if (sentence) sentences.push(sentence);
+    start = index + 1;
+  }
+  const remainder = text.slice(start).trim();
+  if (remainder) sentences.push(remainder);
+  return sentences.length ? sentences : [text.trim()];
 }
 
 function splitToTokenLimit(text, maxTokens, tokenizer) {
