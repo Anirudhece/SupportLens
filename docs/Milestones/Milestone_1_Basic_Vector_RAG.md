@@ -322,12 +322,12 @@ The implementation uses Gemini 3.5 Flash-Lite's current `thinkingLevel: "minimal
 
 ## Verification evidence
 
-Observed on 2026-09-01 with Node.js `24.20.0` and npm `11.19.0`:
+Baseline observed on 2026-09-01 and the post-completion hotfix reverified on 2026-09-02 with Node.js `24.20.0` and npm `11.19.0`:
 
 | Check | Result |
 | --- | --- |
 | `npm ci` | Passed; 276 packages installed from the lockfile. Two transitive deprecation notices and npm install-script review notices were emitted. |
-| `npm test` after the guardrail correction | Passed: 35 tests; the two live RAG cases were skipped by default as designed. This includes a real `pdf-parse` extraction test using an in-test valid PDF and the guardrail regression cases. |
+| `npm test` after the punctuation-loss hotfix | Passed: 37 tests; the two live RAG cases were skipped by default as designed. This includes a real `pdf-parse` extraction test, the guardrail regression cases, and lossless punctuation-heavy chunking checks. |
 | `npm run build` after the clean install | Passed; `/`, `/documents`, `/chat`, and `/retrieval-debugger` were generated. |
 | Fresh MiniLM first-run smoke test | Passed after the approved one-time Hugging Face download: 384 dimensions and vector norm `1`. |
 | Real-tokenizer chunk smoke test | Passed: five chunks, largest measured chunk 198 WordPiece tokens against the 200-token bound. |
@@ -340,8 +340,15 @@ Observed on 2026-09-01 with Node.js `24.20.0` and npm `11.19.0`:
 | First live Gemini baseline | Found a real regression: expected-status accuracy was `0.7333` with citation validity `1.00`. Only 4/8 supported cases answered because the embedded-instruction detector treated a lower-ranked malicious fixture as poisoning the entire retrieved set and also misclassified benign API-key policy text. |
 | Corrected live Gemini baseline | Passed all 15 cases: 8/8 supported cases `answered`; 7/7 unsupported or adversarial cases returned `insufficient_context`; citation validity `1.00`; expected-status accuracy `1.00`; 12 provider calls used 6,349 total tokens. Median provider latency was `1679.75 ms` and mean provider latency was `2273.29 ms`; three high-risk cases used deterministic fallback without a provider call. |
 | Manual browser Local/Cloud flows | Passed. Documents listed all nine seeded documents on both targets. Retrieval Debugger ranked `payment-errors.md` first for `PAYMENT_4027` on both targets and exposed scores, timing, and embedding model. Chat returned a grounded cited answer on both targets and a Local weather question returned `insufficient_context` without sources. |
+| Post-completion Markdown punctuation regression | Reproduced after uploading this milestone document: scoped package names and semantic versions were reduced to their final version digits before embedding. The sentence splitter was made lossless, regression tests were added, exactly 58 corrupted Local chunks were removed, and the document was re-ingested as 59 corrected chunks. The user confirmed that the repeated Chat question displayed all six exact package/version pairs. |
 | `git diff --check` | Passed. |
 
 The perfect retrieval scores are a result on a deliberately small, synthetic nine-document corpus. They establish a reproducible baseline; they do not demonstrate production retrieval quality or justify a permanent threshold.
 
 All 12 documented gates passed. The first live answer evaluation exposed an over-broad content guardrail; the corrected implementation filters suspicious lower-ranked chunks from model context, refuses a suspicious top-ranked chunk deterministically, preserves legitimate security-policy content, and restricts citations to the safe retrieved subset. Milestone 1 is therefore **Complete**.
+
+## Post-completion hotfix
+
+On 2026-09-02, a manual upload of this milestone document exposed silent content loss in sentence splitting. Internal periods were excluded by the original regular expression unless they terminated a sentence, so values such as `` `@chroma-core/default-embed@0.1.9` `` reached Chroma as only `` `9` ``. Retrieval still selected the correct document and section, which initially made the malformed answer look like a generation problem.
+
+The splitter now detects sentence-ending punctuation without discarding unmatched characters. Regression coverage proves normalized reconstruction and preservation of scoped packages, semantic versions, decimals, URLs, filenames, and Markdown inline code while retaining the token bound. The full deterministic suite increased from 35 to 37 passing tests, the frontend build and whitespace checks passed, and the affected Local document was re-ingested through the normal API. This corrective work does not change the approved chunk-size, overlap, embedding, storage, retrieval, or generation architecture.

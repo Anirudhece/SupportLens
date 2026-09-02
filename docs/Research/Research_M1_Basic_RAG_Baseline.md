@@ -170,9 +170,19 @@ The corrected live Local evaluation passed all 15 fixed cases:
 
 These fixed status and citation checks do not claim semantic answer perfection. They demonstrate that Flash-Lite satisfied the approved Milestone 1 schema, grounding, citation, and abstention gate on the synthetic baseline.
 
+### Post-completion punctuation-loss regression
+
+On 2026-09-02, the user uploaded `Milestone_1_Basic_Vector_RAG.md` and asked for its approved dependencies. Retrieval selected the correct source and `Approved dependencies` section, but the answer contained only `9`, `1`, `0`, `0`, `5`, and `4` instead of the package names and full semantic versions.
+
+A direct ingestion diagnostic proved that corruption occurred before embedding and generation. The sentence-matching expression excluded internal periods and silently resumed after them, reducing values such as `` `@chroma-core/default-embed@0.1.9` `` to their final suffix. This failure class also threatened decimals, URLs, filenames, identifiers, and Markdown inline code.
+
+The correction replaced the lossy matcher with sentence-boundary scanning that preserves all characters. New tests cover the exact six approved dependencies, normalized lossless reconstruction, decimals, URLs, filenames, scoped packages, inline code, ordinary sentence boundaries, and the existing token bound. The affected Local record was repaired narrowly: 58 corrupted chunks for that document were removed, and normal API ingestion produced 59 corrected chunks containing all six exact package/version pairs. The user confirmed that the repeated Chat question displayed all six dependencies.
+
+A Local retrieval diagnostic also showed why output inspection alone is insufficient: the chunk containing the complete six-item list appeared at rank 5 for the original wording while the current default retrieval depth is 4. The successful UI text should therefore not be treated as claim-level grounding proof. This question becomes a required harder case for Milestone 2, where chunk structure and retrieval completeness can be measured without silently raising `topK`.
+
 ### Software and integration verification
 
-- Deterministic suite after the guardrail correction: 35 passed; two opt-in live cases skipped by default. The loader coverage includes the real `pdf-parse` path with a self-contained valid PDF and page-aware assertions.
+- Deterministic suite after the punctuation-loss hotfix: 37 passed; two opt-in live cases skipped by default. The loader coverage includes the real `pdf-parse` path with a self-contained valid PDF and page-aware assertions.
 - Frontend production build: passed for the status, Documents, Chat, and Retrieval Debugger routes.
 - Real Local Chroma heartbeat and unique-collection RAG integration: passed.
 - Real Chroma Cloud heartbeat and unique-collection RAG integration: passed.
@@ -190,6 +200,7 @@ These fixed status and citation checks do not claim semantic answer perfection. 
 - Workspace commands store uploads and the registry under `backend/.local/`; the root-only ignore rule initially missed that directory. The ignore pattern now covers `.local/` at any workspace depth. Existing synthetic seeded data was preserved for manual verification.
 - `npm ci` reported deprecation notices for two transitive packages and asked for review of five dependency install scripts. The install, tests, build, fresh model download, and real integrations still passed; no unapproved version changes were made in response.
 - The first live Gemini run produced only four of eight expected supported answers. The over-broad embedded-instruction handling was corrected and protected with four regression tests; rerunning the unchanged 15 cases produced 100% expected statuses and valid citations.
+- A post-completion manual question revealed that the original sentence matcher silently discarded text around internal periods. The repaired splitter and lossless reconstruction tests preserve punctuation-heavy content; targeted re-ingestion corrected the affected Local document without resetting unrelated data.
 
 ## Current interpretation
 

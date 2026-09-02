@@ -154,15 +154,16 @@ The RAG integration commands create uniquely named collections, exercise real lo
 
 ## Current evidence
 
-Verified on 2026-09-01 with the pinned runtime:
+Baseline verified on 2026-09-01 and the post-completion chunk-loss regression reverified on 2026-09-02 with the pinned runtime:
 
 - Clean `npm ci`: passed.
-- Deterministic tests: 35 passed; two opt-in live cases skipped by default.
+- Deterministic tests: 37 passed; two opt-in live cases skipped by default.
 - Frontend production build: passed for all four application routes.
 - Fresh MiniLM download and embedding: 384 dimensions, norm `1`.
 - Real Local and Chroma Cloud heartbeat plus RAG ingestion/retrieval: passed.
 - Retrieval baseline on both targets: Recall@1 `1.00`, Recall@3 `1.00`, MRR `1.00`, and exact-identifier Recall@1 `1.00` on the deliberately small synthetic corpus.
 - Live Local answer and guardrail baseline: 8/8 supported cases answered, 7/7 unsupported or adversarial cases returned `insufficient_context`, citation validity `1.00`, and expected-status accuracy `1.00`.
 - Manual Documents → Retrieval Debugger → Chat verification: passed for Local and Chroma Cloud, including a grounded cited answer on each target and an unsupported-question fallback.
+- Post-completion Markdown regression: fixed silent loss of punctuation-heavy content such as scoped npm packages and semantic versions; the affected Local document was re-ingested and the user confirmed that Chat displayed all six exact approved dependencies.
 
 See [Milestone 1](docs/Milestones/Milestone_1_Basic_Vector_RAG.md) for the approved gate and [Research M1](docs/Research/Research_M1_Basic_RAG_Baseline.md) for measured evidence, limitations, and failures.
