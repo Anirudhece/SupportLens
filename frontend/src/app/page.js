@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import ServiceStatus from '../components/ServiceStatus.js';
 import { fetchDependencyHealth, fetchHealth } from '../apiHandlers/healthApi.js';
+import AppNav from '../components/AppNav.js';
 
 const initialStatus = { state: 'checking' };
 
@@ -37,6 +38,7 @@ export default function HomePage() {
 
   return (
     <main className="shell">
+      <AppNav />
       <header className="hero">
         <p className="eyebrow">MILESTONE 0 · ENVIRONMENT SETUP</p>
         <h1>SupportLens technical status</h1>

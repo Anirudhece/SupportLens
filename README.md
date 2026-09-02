@@ -1,39 +1,46 @@
 # SupportLens
 
-SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestone 0 currently provides the JavaScript application foundation and Local/Cloud ChromaDB connectivity diagnostics; ingestion, retrieval, and answer generation are intentionally deferred.
+SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0 and 1 are complete. Milestone 1 establishes the first end-to-end document, embedding, retrieval, grounded-answer, citation, visibility, guardrail, and evaluation baseline.
 
-## Milestone 0 status
-
-Milestone 0 is complete. The local development path is implemented and verified:
+## Current architecture
 
 ```text
-Next.js frontend
-      ↓ HTTP
-Express backend
-      ↓ HTTP
-Local ChromaDB
+Next.js Documents / Chat / Retrieval Debugger
+                    ↓ HTTP
+                 Express
+                    ↓
+   load → normalize → chunk → local MiniLM embed
+                    ↓
+        Local ChromaDB or Chroma Cloud
+                    ↓
+       retrieve → guardrails → Gemini answer
 ```
 
-The Local and Chroma Cloud paths are implemented and heartbeat-verified. Manual browser verification also confirmed the Local default, the Cloud transition, and the transition back to Local with connected states.
+Embedding generation remains application-owned. `all-MiniLM-L6-v2` runs on the backend machine and supplies precomputed 384-dimensional vectors to either Chroma target. Selecting Chroma Cloud does not move embedding inference to the cloud. Local and Cloud collections are independent.
+
+Gemini 3.5 Flash-Lite is configured for single-turn, non-streaming structured answers without search or other tools. No larger model is used as an automatic fallback.
 
 ## Prerequisites
 
 - NVM
 - Node.js `24.20.0`
 - npm `11.19.0`, included with the approved Node release
-- A Chroma Cloud account only when verifying the Cloud target
+- A Chroma Cloud account only for Cloud storage and integration checks
+- A Gemini API key and available quota only for grounded answers and answer evaluation
 
 Activate the repository runtime and install the pinned dependencies:
 
 ```bash
 nvm install
 nvm use
-npm install
+npm ci
 ```
+
+The first embedding or ingestion request downloads `all-MiniLM-L6-v2` once. Later requests use the local model cache.
 
 ## Environment configuration
 
-The local defaults work without real environment files. To configure them explicitly:
+The local Chroma defaults work without real environment files. To configure the applications explicitly:
 
 ```bash
 cp frontend/.env.example frontend/.env.local
@@ -48,9 +55,17 @@ CHROMA_TENANT=
 CHROMA_DATABASE=
 ```
 
-The Express API binds to `127.0.0.1` by default so the local development server is not exposed to the surrounding network. A deployment environment can override this with `BACKEND_HOST`. Dependency heartbeats return an unavailable response after `5000` milliseconds by default; `HEALTH_HEARTBEAT_TIMEOUT_MS` can override that bound.
+For grounded answer generation, also set:
 
-Use `CHROMA_CLOUD_HOST` when the database uses a non-default Chroma Cloud region. Never put Chroma credentials in a `NEXT_PUBLIC_` variable or commit a real `.env` file.
+```env
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.5-flash-lite
+GENERATION_MAX_OUTPUT_TOKENS=1024
+```
+
+Gemini free-tier development must use only synthetic or otherwise non-sensitive data. Do not upload confidential documents under the current provider configuration. Never place Chroma or Gemini secrets in a `NEXT_PUBLIC_` variable or commit a real environment file.
+
+The Express API binds to `127.0.0.1` by default. Local uploaded originals and the JSON document registry persist under `backend/.local/`; Local Chroma data persists under root `.local/chroma/`. Both paths are ignored by Git.
 
 ## Start the application
 
@@ -66,8 +81,6 @@ The services run at:
 - Express API: `http://localhost:4000`
 - Local ChromaDB: `http://localhost:8000`
 
-The local ChromaDB data persists under `.local/chroma`, which is ignored by Git.
-
 The services can also be started independently:
 
 ```bash
@@ -76,42 +89,81 @@ npm run dev:backend
 npm run dev:chroma
 ```
 
-## Health endpoints
+Application routes:
+
+- `/` — Express and Chroma connectivity status
+- `/documents` — upload Markdown, text, or PDF documents and inspect ingestion results
+- `/retrieval-debugger` — inspect ranked chunks, scores, metadata, target, and latency
+- `/chat` — request a grounded answer and inspect citations, model, timing, and usage
+
+## API surface
 
 ```text
-GET /health
-GET /health/dependencies?target=local
-GET /health/dependencies?target=cloud
+GET  /health
+GET  /health/dependencies?target=local|cloud
+POST /api/v1/documents
+GET  /api/v1/documents?target=local|cloud
+POST /api/v1/retrieval
+POST /api/v1/answers
 ```
 
-`/health` verifies only Express liveness. The dependency endpoint performs a real heartbeat against the selected backend-owned Chroma client and bounds how long the API waits for that heartbeat.
+Document upload uses multipart form data with one `file`, an optional `target`, and a 5 MB maximum. Retrieval and answer requests accept JSON with `question`, `target`, and optional integer `nResults`/`topK` from 1 to 10.
+
+## Seed and evaluate the baseline
+
+With the selected Chroma target available, seed the nine synthetic support documents:
+
+```bash
+npm run seed -- local
+npm run seed -- cloud
+```
+
+Run the fixed 15-case baseline:
+
+```bash
+npm run eval -- local
+npm run eval -- cloud
+```
+
+The evaluator reports Recall@1, Recall@3, MRR, exact-identifier retrieval, per-case latency, expected answer status, citation validity, fallback behaviour, and provider usage. When `GEMINI_API_KEY` is absent, answer metrics are explicitly marked skipped rather than passed.
 
 ## Verification commands
 
-Run deterministic backend tests:
+Run deterministic backend tests and build the frontend:
 
 ```bash
 npm test
-```
-
-With the local ChromaDB server running:
-
-```bash
-npm run test:integration:local
-```
-
-With valid Chroma Cloud values in `backend/.env`:
-
-```bash
-npm run test:integration:cloud
-```
-
-The Cloud command intentionally fails with a clear configuration message when the required credentials are absent. This prevents an unverified Cloud integration from being reported as successful.
-
-Build the frontend for production:
-
-```bash
 npm run build
 ```
 
-See [Milestone 0](docs/Milestones/Milestone_0_Environment_Setup.md) for the approved decisions, pass/fail gate, and current verification evidence.
+With the Local Chroma server running:
+
+```bash
+npm run test:integration:local
+npm run test:integration:rag:local
+```
+
+With valid Chroma Cloud values:
+
+```bash
+npm run test:integration:cloud
+npm run test:integration:rag:cloud
+```
+
+The RAG integration commands create uniquely named collections, exercise real local MiniLM precomputed embeddings, and clean the collections afterward. Cloud commands fail clearly when required credentials are absent.
+
+## Current evidence
+
+Baseline verified on 2026-09-01 and the post-completion chunk-loss regression reverified on 2026-09-02 with the pinned runtime:
+
+- Clean `npm ci`: passed.
+- Deterministic tests: 37 passed; two opt-in live cases skipped by default.
+- Frontend production build: passed for all four application routes.
+- Fresh MiniLM download and embedding: 384 dimensions, norm `1`.
+- Real Local and Chroma Cloud heartbeat plus RAG ingestion/retrieval: passed.
+- Retrieval baseline on both targets: Recall@1 `1.00`, Recall@3 `1.00`, MRR `1.00`, and exact-identifier Recall@1 `1.00` on the deliberately small synthetic corpus.
+- Live Local answer and guardrail baseline: 8/8 supported cases answered, 7/7 unsupported or adversarial cases returned `insufficient_context`, citation validity `1.00`, and expected-status accuracy `1.00`.
+- Manual Documents → Retrieval Debugger → Chat verification: passed for Local and Chroma Cloud, including a grounded cited answer on each target and an unsupported-question fallback.
+- Post-completion Markdown regression: fixed silent loss of punctuation-heavy content such as scoped npm packages and semantic versions; the affected Local document was re-ingested and the user confirmed that Chat displayed all six exact approved dependencies.
+
+See [Milestone 1](docs/Milestones/Milestone_1_Basic_Vector_RAG.md) for the approved gate and [Research M1](docs/Research/Research_M1_Basic_RAG_Baseline.md) for measured evidence, limitations, and failures.

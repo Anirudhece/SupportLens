@@ -32,7 +32,7 @@ An AI agent must not silently fill in an unresolved implementation decision mere
 | Milestone | Status | Purpose | Detailed gate |
 | --- | --- | --- | --- |
 | [Milestone 0 — Environment Setup](Milestones/Milestone_0_Environment_Setup.md) | Complete | Establish the JavaScript workspace and prove Local and Cloud ChromaDB connectivity across the frontend and backend. | All documented implementation, Local, Cloud, automated, command, and interactive browser gates passed. |
-| Milestone 1 — Basic Vector RAG | Planned | Build the first explicit ingestion, retrieval, answer-generation, citation, and retrieval-visibility path. | To be defined after its pre-implementation discussion. |
+| [Milestone 1 — Basic Vector RAG](Milestones/Milestone_1_Basic_Vector_RAG.md) | Complete | Build the first explicit ingestion, retrieval, answer-generation, citation, and retrieval-visibility path. | Passed: deterministic tests and build; real MiniLM ingestion/retrieval on Local and Cloud; structured Gemini answers; citation integrity; critical guardrails; fixed baseline evaluation; both rendered browser flows; and evidence documentation. |
 | Milestone 2 — Chunking Experiments | Planned | Compare chunk-size and overlap strategies using fixed evaluation questions. | To be defined after a baseline exists. |
 | Milestone 3 — Metadata Filtering | Planned | Add and verify metadata-aware retrieval. | To be defined during milestone planning. |
 | Milestone 4 — Hybrid Retrieval | Planned | Combine keyword and vector retrieval for semantic questions and exact identifiers. | To be defined during milestone planning. |

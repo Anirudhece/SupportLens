@@ -20,12 +20,16 @@ MongoDB Vector Search, ChromaDB, PostgreSQL with pgvector, Pinecone, Qdrant, and
 
 The final choice for the main project is **ChromaDB** because it supports the intended learning progression:
 
-- Begin with automatic local embeddings to establish a working retrieval baseline.
-- Replace the automatic embedding function with an explicitly managed local or hosted model.
+- Begin with a local open-weight embedding model to establish a working retrieval baseline.
+- Manage embedding generation explicitly in the application rather than hiding it behind collection operations.
 - Supply precomputed vectors so embedding generation and vector storage remain separate, understandable components.
 - Compare embedding models locally without depending on a paid hosted database or inference service.
 
-ChromaDB's default embedding function uses the open-weight `all-MiniLM-L6-v2` model locally; it is not a proprietary Chroma model. That default is a possible baseline, not the approved production embedding model. The embedding model and provider remain open decisions that must be evaluated separately.
+Milestone 1 establishes `all-MiniLM-L6-v2` as the approved local embedding baseline. Express calls the model explicitly through Chroma's default-embedding package and supplies the resulting vectors to ChromaDB. The embedding model runs on the application machine even when Chroma Cloud is selected, requires a one-time local model download, and remains replaceable for later measured comparisons. Local and Cloud collections are independent and must never mix vectors from different embedding models.
+
+Milestone 1 uses `gemini-3.5-flash-lite` for grounded answer generation through the official Google GenAI SDK. The model is used in single-turn, non-streaming mode with structured output and without search, URL context, code execution, or other external tools. While development relies on the Gemini free tier, only synthetic or otherwise non-sensitive data may be sent to the provider. A larger model is not an automatic fallback: the same fixed cases must first show a documented quality or guardrail failure, followed by an approved comparison.
+
+Milestone 1 completed on 2026-09-01. The fixed nine-document, 15-case synthetic baseline achieved Recall@1, Recall@3, MRR, and exact-identifier Recall@1 of `1.00` on both Local and Chroma Cloud retrieval. The live Local Gemini evaluation answered all eight supported cases, refused all seven unsupported or adversarial cases, and achieved citation validity and expected-status accuracy of `1.00`. These are reproducible baseline results on a deliberately small corpus, not production-quality claims. Manual rendered verification also passed for Documents, Retrieval Debugger, and Chat on both storage targets.
 
 PostgreSQL with pgvector was not selected because learning and defending PostgreSQL is no longer a primary objective for this project. Pinecone remains a credible managed alternative, but selecting it now would move embedding execution and vector infrastructure behind a hosted service. A future managed-service comparison may be considered after the ChromaDB implementation is understood and evaluated, but it is not currently a committed milestone.
 
@@ -249,13 +253,13 @@ Word
 Character
 ```
 
-Chunk size and overlap are experimental parameters. They should be compared using the evaluation dataset instead of being treated as magic constants.
+Chunk size and overlap are experimental parameters. They should be compared using the evaluation dataset instead of being treated as magic constants. Milestone 1 uses a maximum of 200 `all-MiniLM-L6-v2` WordPiece tokens with 30 tokens of overlap. This is a safe baseline below the model's 256-token truncation boundary, not a claim that the parameters are optimal.
 
 ### Vector search and ChromaDB
 
 ChromaDB stores documents, embeddings, and metadata in collections and retrieves records by vector similarity. It can generate embeddings through a collection's embedding function or accept vectors generated explicitly by the application.
 
-The implementation should preserve a clear boundary between embedding generation and vector storage even when ChromaDB generates the first baseline embeddings automatically. This makes it possible to compare local and hosted embedding providers without rewriting document loading, chunking, retrieval evaluation, or answer generation.
+The implementation preserves a clear boundary between embedding generation and vector storage: Express generates the Milestone 1 baseline embeddings explicitly, and ChromaDB receives precomputed vectors. This makes it possible to compare local and hosted embedding providers without rewriting document loading, chunking, retrieval evaluation, or answer generation.
 
 Vectors produced by different embedding models must not be mixed. Changing the embedding model requires re-embedding the corpus and using a compatible collection configuration. Meaningful model comparisons should use the same chunks, metadata, questions, and retrieval metrics.
 
@@ -272,6 +276,8 @@ More context is not automatically better. The system must control the number, si
 ## Evaluation strategy
 
 Evaluation is a core feature, not an optional final improvement.
+
+Milestone 1 begins with approximately 12–15 fixed seed cases, including at least five unsupported or adversarial cases. It records Recall@1, Recall@3, Mean Reciprocal Rank, exact-identifier behaviour, latency, citation validity, fallback behaviour, and provider usage. This establishes a small baseline before later milestones expand toward the full dataset described below; it does not invent an overall quality threshold before measurements exist.
 
 The project should contain a golden dataset of roughly 40–50 questions. Each test case should identify the expected document or section and, where useful, an expected answer.
 
@@ -308,6 +314,8 @@ Answer evaluation should consider:
 - Unsupported or hallucinated claims
 
 An LLM may be used as one evaluation signal, but it should not be treated as perfect ground truth.
+
+The Milestone 1 guardrail baseline combines a context-only prompt, explicit treatment of retrieved text as untrusted data, deterministic fallback when no context is available, structured `answered` or `insufficient_context` output, and server-side validation that citations belong to the retrieved set. It also bounds inputs and provider calls and tests off-topic questions, prompt injection, system-prompt extraction, citation spoofing, and secret extraction. These controls reduce risk but do not guarantee perfect model isolation; failures must be recorded and addressed using evidence.
 
 Evaluation also enables regression testing. For example, if changing the chunk size causes Recall@5 to fall from 84% to 73%, the change should be rejected even if a few manually tested questions still look good.
 

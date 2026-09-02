@@ -18,6 +18,10 @@
     "test": "npm run test --workspace backend",
     "test:integration:local": "npm run test:local --workspace backend",
     "test:integration:cloud": "npm run test:cloud --workspace backend",
+    "test:integration:rag:local": "npm run test:rag:local --workspace backend",
+    "test:integration:rag:cloud": "npm run test:rag:cloud --workspace backend",
+    "seed": "npm run seed --workspace backend",
+    "eval": "npm run eval --workspace backend",
     "build": "npm run build --workspace frontend"
   },
   "devDependencies": {
