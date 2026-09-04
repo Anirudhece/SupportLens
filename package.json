@@ -22,6 +22,7 @@
     "test:integration:rag:cloud": "npm run test:rag:cloud --workspace backend",
     "seed": "npm run seed --workspace backend",
     "eval": "npm run eval --workspace backend",
+    "experiment:chunking": "npm run experiment:chunking --workspace backend",
     "build": "npm run build --workspace frontend"
   },
   "devDependencies": {

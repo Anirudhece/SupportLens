@@ -101,12 +101,119 @@ function splitToTokenLimit(text, maxTokens, tokenizer) {
   return chunks.filter(Boolean);
 }
 
+function parseHeadingBlocks(text) {
+  const sections = String(text || '').split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean);
+  let heading = '';
+  return sections.map((section) => {
+    const lines = section.split('\n');
+    const headingMatch = HEADING_PATTERN.exec(lines[0]);
+    if (headingMatch) {
+      heading = headingMatch[2].trim();
+      lines.shift();
+    }
+    return { heading, body: lines.join(' ').trim() };
+  }).filter((section) => section.body);
+}
+
+function headingContent(heading, body, maxTokens, tokenizer) {
+  if (!heading) return body;
+  // Keep section metadata even when an unusually small experimental limit
+  // cannot fit the heading beside any body content.
+  if (maxTokens && tokenCount(heading, tokenizer) >= maxTokens) return body;
+  return `${heading}\n${body}`;
+}
+
+function splitHeadingBody(heading, body, maxTokens, tokenizer) {
+  const content = headingContent(heading, body, maxTokens, tokenizer);
+  if (tokenCount(content, tokenizer) <= maxTokens) return [body];
+
+  const words = body.split(/\s+/).filter(Boolean);
+  const pieces = [];
+  let current = [];
+  for (const word of words) {
+    const candidate = [...current, word].join(' ');
+    if (!current.length && tokenCount(headingContent(heading, word, maxTokens, tokenizer), tokenizer) > maxTokens) {
+      // A pathological long word still needs a bounded representation. The
+      // heading remains available in metadata even when it cannot fit beside
+      // the fragment in the configured limit.
+      const available = Math.max(1, maxTokens - tokenCount(heading, tokenizer));
+      pieces.push(...splitOversizedWord(word, available, tokenizer, { content: '' }).map((piece) => piece.content));
+      continue;
+    }
+    if (current.length && tokenCount(headingContent(heading, candidate, maxTokens, tokenizer), tokenizer) > maxTokens) {
+      pieces.push(current.join(' '));
+      current = [word];
+    } else {
+      current.push(word);
+    }
+  }
+  if (current.length) pieces.push(current.join(' '));
+  return pieces.filter(Boolean);
+}
+
+function headingAwareChunks(text, maxTokens, overlapTokens, tokenizer, source) {
+  const blocks = parseHeadingBlocks(text);
+  const groups = [];
+  for (const block of blocks) {
+    const previous = groups.at(-1);
+    if (!previous || previous.heading !== block.heading) groups.push({ heading: block.heading, blocks: [] });
+    groups.at(-1).blocks.push(block.body);
+  }
+
+  const baseChunks = [];
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+    const group = groups[groupIndex];
+    const units = group.blocks.flatMap((body) => splitToTokenLimit(body, maxTokens, tokenizer));
+    let current = '';
+    for (const unit of units) {
+      const candidate = current ? `${current} ${unit}` : unit;
+      if (current && tokenCount(headingContent(group.heading, candidate, maxTokens, tokenizer), tokenizer) > maxTokens) {
+        baseChunks.push({ heading: group.heading, body: current, groupIndex });
+        current = unit;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) baseChunks.push({ heading: group.heading, body: current, groupIndex });
+  }
+
+  const overlapped = baseChunks.map((chunk, index) => {
+    let body = chunk.body;
+    const previous = baseChunks[index - 1];
+    if (previous && previous.groupIndex === chunk.groupIndex && overlapTokens > 0) {
+      let overlapWords = overlapText(previous.body, overlapTokens, tokenizer).split(/\s+/).filter(Boolean);
+      while (overlapWords.length && tokenCount(headingContent(chunk.heading, `${overlapWords.join(' ')} ${body}`, maxTokens, tokenizer), tokenizer) > maxTokens) {
+        overlapWords.shift();
+      }
+      if (overlapWords.length) body = `${overlapWords.join(' ')} ${body}`;
+    }
+    return { ...chunk, body };
+  });
+
+  const finalChunks = overlapped.flatMap((chunk) => splitHeadingBody(chunk.heading, chunk.body, maxTokens, tokenizer).map((body) => ({
+    id: `${source}:${baseChunks.indexOf(chunk)}`,
+    content: headingContent(chunk.heading, body, maxTokens, tokenizer),
+    section: chunk.heading || undefined,
+    tokenCount: tokenCount(headingContent(chunk.heading, body, maxTokens, tokenizer), tokenizer),
+    groupIndex: chunk.groupIndex
+  })));
+  if (finalChunks.some((chunk) => chunk.tokenCount > maxTokens)) {
+    throw new Error(`Heading-aware chunker produced a chunk larger than ${maxTokens} tokens.`);
+  }
+  return finalChunks.map(({ groupIndex, ...chunk }, index) => ({ ...chunk, id: `${source}:${index}` }));
+}
+
 export function chunkDocument(text, {
   maxTokens = 200,
   overlapTokens = 30,
   tokenizer,
-  source = 'document'
+  source = 'document',
+  strategy = 'recursive'
 } = {}) {
+  if (!['recursive', 'heading-aware'].includes(strategy)) {
+    throw new Error(`Unknown chunking strategy: ${strategy}`);
+  }
+  if (strategy === 'heading-aware') return headingAwareChunks(text, maxTokens, overlapTokens, tokenizer, source);
   const sections = String(text || '').split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean);
   const result = [];
   let heading = '';
@@ -133,6 +240,7 @@ export function chunkDocument(text, {
   // Carry a small sentence/word overlap between adjacent chunks without allowing
   // heading metadata to be duplicated as content.
   for (let i = 1; i < result.length && overlapTokens > 0; i += 1) {
+    if (result[i - 1].section !== result[i].section) continue;
     const overlap = overlapText(result[i - 1].content, overlapTokens, tokenizer);
     if (overlap) {
       const currentBody = result[i].content.split('\n').at(-1);
@@ -174,7 +282,7 @@ export function chunkDocument(text, {
   if (finalChunks.some((chunk) => chunk.tokenCount > maxTokens)) {
     throw new Error(`Chunker produced a chunk larger than ${maxTokens} tokens.`);
   }
-  return finalChunks;
+  return finalChunks.map((chunk, index) => ({ ...chunk, id: `${source}:${index}` }));
 }
 
 export { tokenCount };

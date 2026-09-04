@@ -1,0 +1,274 @@
+# Milestone 2 — Chunking Experiments
+
+## Status
+
+- **Status:** In progress
+- **Approved:** 2026-09-03
+- **Started:** 2026-09-03
+- **Related research:** `docs/Research/Research_M2_Chunking_Strategy_Comparison.md`
+
+## Goal
+
+Determine whether SupportLens should retain or change its Milestone 1 recursive chunking baseline by comparing controlled chunk-size, overlap, and heading-aware packing variants against a fixed retrieval dataset.
+
+The milestone must produce reproducible evidence. It is successful even if the evidence supports keeping the existing strategy.
+
+## Why this milestone exists
+
+Milestone 1 established a safe baseline: recursive boundary-aware splitting, a maximum of 200 `all-MiniLM-L6-v2` WordPiece tokens, and 30 tokens of overlap. That baseline is deliberately conservative rather than proven optimal.
+
+The post-completion dependency-list regression also showed that expected-source rank alone is insufficient. The correct document can be retrieved while the top four chunks still omit facts required for a complete answer. Milestone 2 therefore measures both source retrieval and required-fact coverage.
+
+## Concepts being learned
+
+- Recursive boundary-aware chunking.
+- The difference between chunk size, overlap, and semantic packing.
+- Controlled experiments that change one variable at a time.
+- Retrieval metrics versus answer-quality checks.
+- Source-level recall versus fact-level context coverage.
+- Latency, chunk-count, and quality trade-offs.
+- Evidence-based configuration selection and regression protection.
+
+## Approved decisions
+
+### Existing production baseline
+
+The current strategy remains the control:
+
+```text
+Paragraph
+   ↓ if too large
+Sentence
+   ↓ if too large
+Word
+   ↓ if too large
+Character
+```
+
+- Maximum chunk size: 200 WordPiece tokens.
+- Overlap: 30 tokens.
+- Embedding model: `Xenova/all-MiniLM-L6-v2`.
+- Retrieval depth: `topK = 4` for the production decision.
+- The implementation is custom and does not introduce LangChain or LlamaIndex.
+
+### Experiment order
+
+1. Reproduce the current `200/30` recursive baseline.
+2. Compare recursive chunk sizes `100`, `150`, `200`, and `240` with overlap fixed at `30`.
+3. Select the strongest size using retrieval and fact-coverage evidence.
+4. Compare overlap values `0`, `15`, `30`, and `45` at that selected size.
+5. Compare the strongest recursive configuration with heading-aware packing using the same size and overlap.
+
+The runner must change one controlled variable at a time and identify every configuration by a stable name.
+
+### Heading-aware packing
+
+The heading-aware variant may combine small paragraphs, lists, and explanatory text belonging to the same heading until the token limit is reached. It must not carry overlap across different headings. It must remain lossless after normalization and must preserve the same source and section metadata as the baseline.
+
+### Evaluation data
+
+- Retain the 15 Milestone 1 cases as regression coverage.
+- Add approximately 10 chunk-sensitive retrieval cases backed by two or three longer synthetic support documents.
+- Cover complete lists, facts near chunk boundaries, split explanations, similar headings, exact identifiers, distractors, and questions requiring two nearby facts.
+- Include the approved-dependencies question as a synthetic fact-coverage regression without depending on a private or manually uploaded document.
+- Use only version-controlled synthetic data for automated Gemini checks.
+
+### Metrics
+
+Record the following for every applicable configuration:
+
+- Recall@1, Recall@3, Recall@4, and Recall@5.
+- Mean Reciprocal Rank.
+- Exact-identifier recall.
+- Required-fact coverage within the top four retrieved chunks.
+- Total chunk count and average chunk token count.
+- Ingestion and retrieval latency.
+- Per-case expected-source rank and top-four fact coverage.
+
+Expected-source metrics are calculated only for cases with an expected source. Required-fact coverage is calculated only for cases that declare required facts.
+
+### Runtime and storage controls
+
+- Run the full comparison matrix against Local ChromaDB.
+- Use a uniquely named, temporary collection for each experiment configuration.
+- Do not modify or delete the normal Milestone 1 Local or Cloud collections.
+- Delete only the experiment collections created by the runner after results are captured.
+- Run the selected configuration once against Chroma Cloud after the user approves the evidence-based selection.
+- Use one warm-up retrieval followed by three timed retrieval runs per configuration.
+
+### Gemini use
+
+Retrieval comparison comes first. Gemini is not called for every configuration because provider variability and quota consumption would obscure the chunking comparison.
+
+After the user approves a selected configuration, run the fixed supported, unsupported, adversarial, citation, and status checks once using synthetic data. No model change is included in this milestone.
+
+### Configuration decision
+
+Do not invent a composite score or arbitrary pass threshold before observing the results. The preferred configuration must:
+
+- Preserve the critical Milestone 1 retrieval and guardrail behaviour.
+- Improve or preserve hard-case expected-source rank and top-four required-fact coverage.
+- Preserve normalized document content without silent loss.
+- Keep every chunk within the verified token bound.
+- Have acceptable, documented chunk-count and latency trade-offs.
+
+If no candidate provides a meaningful improvement, retain `200/30` and document that result.
+
+## Implementation scope
+
+### Chunking implementation
+
+- Keep the existing recursive behaviour as the default.
+- Make the strategy, maximum token count, and overlap explicit inputs usable by the experiment runner.
+- Add heading-aware packing without changing the production default before the decision checkpoint.
+- Enforce lossless normalized reconstruction, section isolation, deterministic output, and final token bounds with automated tests.
+
+### Experiment runner
+
+- Seed a fresh experiment collection for each configuration using the approved synthetic corpus.
+- Embed the corpus and fixed questions with the existing local MiniLM provider.
+- Retrieve enough candidates to calculate metrics through Recall@5 while separately evaluating the production top-four context.
+- Print a human-readable comparison table and a machine-readable JSON result.
+- Clean up only collections created by the current run, including after a handled failure.
+- Support one root command for the Local experiment matrix.
+
+### Planned files
+
+| File | Planned change |
+| --- | --- |
+| `backend/src/chunking/chunkDocument.js` | Expose deterministic baseline and heading-aware strategy behaviour while preserving the current default. |
+| `backend/scripts/runChunkingExperiments.js` | Add the reproducible Local experiment runner and metrics calculation. |
+| `backend/evals/m2-chunking-cases.json` | Add the fixed chunk-sensitive case definitions and required facts. |
+| `backend/fixtures/chunking/` | Add the longer synthetic support documents used only by M2 experiments. |
+| `backend/tests/chunking.test.js` | Extend token-bound, reconstruction, overlap, and heading-boundary coverage. |
+| `backend/tests/chunkingExperiments.test.js` | Verify metrics and experiment-runner invariants without requiring live ChromaDB. |
+| `backend/package.json` | Add the workspace experiment command. |
+| `package.json` | Add the root experiment command. |
+| `docs/Research/Research_M2_Chunking_Strategy_Comparison.md` | Record actual configurations, outputs, failures, comparisons, and the recommendation. |
+| `docs/Milestones/Milestone_2_Chunking_Experiments.md` | Track implementation, verification evidence, the decision checkpoint, and completion gate. |
+| `docs/SupportLens_plan.md` | Keep the milestone status and measurable gate synchronized. |
+| `README.md` | Add the verified experiment command and selected production configuration only after validation. |
+
+Exact fixture filenames and internal helper boundaries may be chosen during implementation, but no additional runtime dependency or architecture layer is approved.
+
+## Implementation phases
+
+### Phase A — Build and run the controlled experiment
+
+1. Add the strategy variants and invariant tests.
+2. Add the synthetic chunk-sensitive corpus and fixed cases.
+3. Add unit-tested metrics and the Local experiment runner.
+4. Run the deterministic suite and Local matrix.
+5. Record all successful and failed observations in the M2 research document.
+6. Present the comparison and recommendation to the user.
+
+### Decision checkpoint
+
+The experiment does not silently change production configuration. The user reviews and approves either:
+
+- the evidence-supported winning configuration; or
+- retaining the Milestone 1 `200/30` baseline.
+
+### Phase B — Apply and validate the approved decision
+
+1. Apply the approved production default only if it differs from the baseline.
+2. Re-ingest the controlled corpus into isolated validation collections.
+3. Validate the selected configuration on Local and Chroma Cloud.
+4. Run the fixed Gemini answer and guardrail regression on synthetic data.
+5. Run deterministic tests, the frontend build, and the manual Retrieval Debugger check.
+6. Update the README, milestone, research document, and master plan with real evidence.
+
+## Commands and verification
+
+The implementation must provide or preserve these root commands:
+
+```bash
+npm test
+npm run build
+npm run experiment:chunking
+npm run test:integration:local
+npm run test:integration:cloud
+npm run test:integration:rag:local
+npm run test:integration:rag:cloud
+```
+
+Cloud, Gemini, and rendered-browser checks occur in Phase B after the decision checkpoint. Commands that need credentials remain explicit opt-in checks.
+
+## Pass/fail gate
+
+Milestone 2 is complete only when:
+
+1. Every compared configuration uses the same synthetic corpus, questions, embedding model, distance function, and timing method.
+2. Baseline and heading-aware chunking are deterministic, lossless after normalization, section-safe, and token-safe.
+3. Recall@1/@3/@4/@5, MRR, exact-identifier retrieval, top-four required-fact coverage, chunk counts, and latency are recorded.
+4. The Local matrix is reproducible with one documented command.
+5. Experiment collections are isolated from production collections and safely cleaned up.
+6. The evidence supports a documented recommendation, including a no-change result if appropriate.
+7. The user explicitly approves the production decision at the checkpoint.
+8. The approved configuration passes deterministic tests plus Local, Cloud, Gemini, and rendered-debugger regression checks.
+9. Real commands, outputs, failures, trade-offs, and lessons are recorded in the milestone and research documents.
+10. `docs/SupportLens_plan.md` is synchronized with the final status.
+
+## Phase A implementation and evidence
+
+Phase A is implemented and the production decision checkpoint is pending.
+
+### What was built
+
+- Added an explicit heading-aware packing option while retaining the recursive `200/30` production default.
+- Corrected recursive overlap so content never crosses a heading boundary.
+- Made post-split chunk identifiers unique and deterministic.
+- Added three long synthetic support documents and ten chunk-sensitive required-fact cases.
+- Added pure evaluation helpers for rank, Recall@1/@3/@4/@5, MRR, exact-identifier recall, top-four required-fact coverage, latency statistics, quality-only selection, and dataset-sensitivity diagnostics.
+- Added an isolated Local Chroma experiment runner and the root `npm run experiment:chunking` command.
+- Batch-embedded the fixed questions once and measured Chroma query time separately from question embedding.
+- Added deterministic chunking and experiment-metric regression tests.
+
+### Verification evidence
+
+| Check | Result |
+| --- | --- |
+| `npm test` | Passed: 52 tests; two opt-in live RAG tests skipped as designed. |
+| `npm run build` | Passed: all frontend routes compiled and prerendered. |
+| JavaScript syntax checks | Passed for the experiment runner and metric module. |
+| `git diff --check` | Passed. |
+| Real-tokenizer bound check | Passed: recursive `200/30` maximum 200 tokens; heading-aware `240/15` maximum 240 tokens; zero over-limit M2 fixture chunks. |
+| Final Local matrix | Passed: 25 cases, 10 configurations, unique collections, one warm-up plus three query samples per case, result written, exit code 0. |
+| Collection isolation | Passed: after the run only `supportlens_m1_local` remained; no M1 collection was deleted or modified. |
+
+The first two pilot attempts were rejected rather than reported as successes. The first dataset did not differentiate chunk sizes or fact coverage, and the second used forced process termination that triggered a native ONNX failure. Both failures and their corrective evidence are recorded in `docs/Research/Research_M2_Chunking_Strategy_Comparison.md`.
+
+The final independent review found two additional edge cases before the decision checkpoint: a partial configuration failure could still allow selection from an incomplete stage, and a heading exactly equal to a very small token limit could exceed the final bound after body content was added. The runner now fails the whole stage if any planned candidate is missing or fails, while the heading remains metadata-only when it cannot leave body capacity. Focused regression tests cover both corrections.
+
+### Phase A recommendation
+
+The evidence-selected candidate is heading-aware packing with a 240-token maximum and 15-token overlap.
+
+Against the current recursive `200/30` production baseline on nineteen expected-source cases, it improved:
+
+- Recall@1: `0.7895` to `0.8947`.
+- Recall@3: `0.9474` to `1.00`.
+- MRR: `0.8728` to `0.9474`.
+- Exact-identifier Recall@1: `0.6667` to `0.8333`.
+
+Both configurations achieved `1.00` Recall@4, Recall@5, required-fact coverage, and required-fact completion. In the final strategy comparison, heading-aware packing produced 35 chunks versus 49 recursive chunks.
+
+### Current checkpoint
+
+No production default, normal collection, README instruction, Cloud data, or Gemini path has changed. Phase B begins only after the user approves either the `heading-aware 240/15` recommendation or retaining recursive `200/30`.
+
+## Out of scope
+
+- Changing the embedding model.
+- Increasing the production retrieval depth above four.
+- Hybrid keyword/vector retrieval.
+- Reranking.
+- Metadata filtering.
+- Changing the Gemini model or adding another answer provider.
+- Frontend controls for selecting chunking configurations.
+- A full production-sized golden dataset.
+- New third-party dependencies.
+
+## Approval record
+
+The user approved starting Milestone 2 on 2026-09-03 after confirming that the existing recursive-overlap strategy should remain the baseline for comparison.
