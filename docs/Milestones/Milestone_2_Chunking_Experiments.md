@@ -2,9 +2,10 @@
 
 ## Status
 
-- **Status:** In progress
+- **Status:** Complete
 - **Approved:** 2026-09-03
 - **Started:** 2026-09-03
+- **Completed:** 2026-09-05
 - **Related research:** `docs/Research/Research_M2_Chunking_Strategy_Comparison.md`
 
 ## Goal
@@ -255,7 +256,64 @@ Both configurations achieved `1.00` Recall@4, Recall@5, required-fact coverage, 
 
 ### Current checkpoint
 
-No production default, normal collection, README instruction, Cloud data, or Gemini path has changed. Phase B begins only after the user approves either the `heading-aware 240/15` recommendation or retaining recursive `200/30`.
+The user approved the `heading-aware 240/15` recommendation and Phase B migration on 2026-09-05.
+
+Phase B will:
+
+- Make heading-aware `240/15` the production ingestion default.
+- Move the application to new `supportlens_m2_local` and `supportlens_m2_cloud` collections.
+- Reindex each stored document only into its original Local or Cloud target.
+- Preserve the M1 collections unchanged for rollback.
+- Validate deterministic, Local, Cloud, Gemini, citation, guardrail, build, and rendered-browser behaviour before completion.
+
+At approval time, no production default or normal collection had yet changed. The following Phase B work subsequently completed the milestone.
+
+## Phase B implementation and evidence
+
+### What was built
+
+- Changed the production ingestion default to heading-aware `240/15` and added stable `m2-heading-aware-240-15` chunking-version metadata to document registry records.
+- Moved normal application traffic to `supportlens_m2_local` and `supportlens_m2_cloud`, retaining the M1 names for rollback visibility.
+- Added `npm run reindex -- local|cloud` to rebuild registered documents only in their original target.
+- Added fail-closed reindex validation: prepare embeddings before chunking, verify collection count before changing registry records, use atomic registry persistence, and report cleanup failures.
+- Made registry mutations reread and merge the latest on-disk state under a bounded cross-process lock, preventing a concurrent upload from being overwritten by reindex metadata.
+- Added independent target-operation locks around complete ingestion and reindex Chroma-plus-registry transactions, preventing same-target chunk deletion races without blocking the other target.
+- Added fail-fast production configuration validation: chunk maximum must be 1–240 tokens and overlap must be non-negative and smaller than the maximum.
+- Added deterministic tests for environment validation, collection deletion, atomic registry writes, reindex success, target isolation, empty registries, count mismatches, and cleanup failures.
+- Bounded the opt-in Cloud RAG test client below its test timeout so stalled SDK requests cannot leave the test process waiting indefinitely.
+
+### Migration results
+
+| Target | Registered documents | M2 chunks | Isolation result |
+| --- | ---: | ---: | --- |
+| Local | 10 | 46 | Nine synthetic documents plus one existing Local upload; M1 Local retained with 72 chunks. |
+| Chroma Cloud | 9 | 9 | Synthetic documents only; the Local-only upload was not copied. |
+
+All migrated records report `m2-heading-aware-240-15`.
+
+### Final verification evidence
+
+| Check | Result |
+| --- | --- |
+| `npm test` | Passed: 93 tests; two opt-in live RAG cases skipped by default. |
+| `npm run build` | Passed: all frontend routes compiled and prerendered. |
+| `npm run test:integration:local` | Passed. |
+| `npm run test:integration:cloud` | Passed after the test-runner timeout was set above the application's bounded heartbeat timeout. |
+| `npm run test:integration:rag:local` | Passed: real MiniLM ingestion and retrieval; transient collection cleaned. |
+| `npm run test:integration:rag:cloud` | Passed after final target-lock changes in 12.83 s: real MiniLM ingestion and retrieval; no transient collection remained. |
+| Fixed retrieval evaluation | Local and Cloud both achieved Recall@1 `1.00`, Recall@3 `1.00`, MRR `1.00`, and exact-ID Recall@1 `1.00`. |
+| Live Gemini regression | 8/8 supported answered; 7/7 unsupported/adversarial used `insufficient_context`; citation validity and expected-status accuracy `1.00`; 6,747 tokens across 12 provider calls. |
+| Rendered status and Documents pages | Express, Local, and Cloud connected; 10 Local documents/46 chunks and 9 Cloud documents/9 chunks displayed. |
+| Rendered Retrieval Debugger | `payment-errors.md` ranked first for `PAYMENT_4027` on Local and Cloud with scores, model, target, and latency visible. |
+| Rendered Cloud Chat | Grounded payment answer cited `payment-errors.md`; an out-of-scope question returned `insufficient_context` without a Gemini call. |
+| Syntax and whitespace checks | Passed JavaScript syntax checks and `git diff --check`. |
+| Independent final review | GPT-5.6 Sol confirmed the target-lock P1 was resolved and reported no remaining P0–P2 issue in the reviewed Phase B scope. |
+
+The first Local reindex failed safely when an absent M2 collection used the SDK's `ChromaNotFoundError` shape; the registry and M1 collection were unchanged. The first Cloud RAG integration attempt also exposed an unbounded SDK request during test cleanup and left one synthetic transient collection. The error handling and test lifetime were corrected, the exact leaked collection was removed, the rerun passed, and a final listing found no transient test collections. Final review then identified and corrected unsafe numeric chunk configuration, a concurrent registry lost-update risk, and a same-target Chroma write/reindex race. These failures are retained in the research record.
+
+### Gate result
+
+All ten documented pass/fail conditions passed. The approved heading-aware `240/15` configuration is active on isolated M2 collections, the M1 collections remain available for rollback, and the master plan is synchronized to **Complete**.
 
 ## Out of scope
 
@@ -272,3 +330,5 @@ No production default, normal collection, README instruction, Cloud data, or Gem
 ## Approval record
 
 The user approved starting Milestone 2 on 2026-09-03 after confirming that the existing recursive-overlap strategy should remain the baseline for comparison.
+
+On 2026-09-05, the user approved adopting the evidence-supported heading-aware 240-token, 15-token-overlap configuration, creating versioned M2 Local and Cloud collections, and reindexing existing stored documents while preserving the M1 collections for rollback.

@@ -285,4 +285,8 @@ export function chunkDocument(text, {
   return finalChunks.map((chunk, index) => ({ ...chunk, id: `${source}:${index}` }));
 }
 
+export function chunkingVersion({ strategy, maxTokens, overlapTokens }) {
+  return `m2-${strategy}-${maxTokens}-${overlapTokens}`;
+}
+
 export { tokenCount };

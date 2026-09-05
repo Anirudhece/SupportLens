@@ -99,6 +99,9 @@ describe('backend configuration', () => {
     expect(config.host).toBe('127.0.0.1');
     expect(config.health.heartbeatTimeoutMs).toBe(5000);
     expect(config.generation.maxOutputTokens).toBe(1024);
+    expect(config.rag.chunkStrategy).toBe('heading-aware');
+    expect(config.rag.chunkTokens).toBe(240);
+    expect(config.rag.chunkOverlap).toBe(15);
   });
 
   it('allows deployment environments to override the bind host and timeout', () => {
@@ -114,5 +117,20 @@ describe('backend configuration', () => {
   it('rejects an unsafe generation output limit', () => {
     expect(loadConfig({ GENERATION_MAX_OUTPUT_TOKENS: '999999' }).generation.maxOutputTokens).toBe(1024);
     expect(loadConfig({ GENERATION_MAX_OUTPUT_TOKENS: '2048' }).generation.maxOutputTokens).toBe(2048);
+  });
+
+  it('validates the explicit chunking strategy', () => {
+    expect(loadConfig({ CHUNK_STRATEGY: 'recursive' }).rag.chunkStrategy).toBe('recursive');
+    expect(loadConfig({ CHUNK_STRATEGY: 'heading-aware' }).rag.chunkStrategy).toBe('heading-aware');
+    expect(() => loadConfig({ CHUNK_STRATEGY: 'not-a-strategy' }))
+      .toThrow('Invalid CHUNK_STRATEGY');
+  });
+
+  it.each(['241', '0', '-1', '2.5'])('rejects unsafe explicit CHUNK_MAX_TOKENS=%s', (value) => {
+    expect(() => loadConfig({ CHUNK_MAX_TOKENS: value })).toThrow('Invalid CHUNK_MAX_TOKENS');
+  });
+
+  it.each(['240', '241', '-1', '2.5'])('rejects unsafe explicit CHUNK_OVERLAP_TOKENS=%s', (value) => {
+    expect(() => loadConfig({ CHUNK_OVERLAP_TOKENS: value })).toThrow('Invalid CHUNK_OVERLAP_TOKENS');
   });
 });

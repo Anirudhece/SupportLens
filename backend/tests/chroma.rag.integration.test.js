@@ -18,10 +18,10 @@ const cloudEnabled = process.env.RUN_LIVE_RAG_CLOUD === 'true' && config.cloudCo
 
 async function exercise(target, client) {
   const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const collectionNames = { local: `sl_m1_local_${suffix}`, cloud: `sl_m1_cloud_${suffix}` };
+  const collectionNames = { local: `sl_m2_local_${suffix}`, cloud: `sl_m2_cloud_${suffix}` };
   const repository = createChromaRepository({ clients: { [target]: client }, collectionNames });
   const embeddings = createLocalEmbeddingProvider({ model: config.embedding.model });
-  const root = await mkdtemp(path.join(os.tmpdir(), 'supportlens-m1-rag-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'supportlens-m2-rag-'));
   const registry = createDocumentRegistry({ path: path.join(root, 'documents.json') });
   const ingestion = createIngestionService({ config: { ...config, storage: { ...config.storage, uploadDir: root } }, embeddings, repository, registry });
   try {
@@ -46,7 +46,9 @@ describe.skipIf(!localEnabled)('real local Chroma RAG', () => {
 
 describe.skipIf(!cloudEnabled)('real Cloud Chroma RAG', () => {
   it('ingests and retrieves with precomputed local MiniLM vectors', async () => {
-    await exercise('cloud', new CloudClient({ apiKey: config.cloud.apiKey, tenant: config.cloud.tenant, database: config.cloud.database, ...(config.cloud.host ? { host: config.cloud.host } : {}) }));
+    // This signal bounds the entire transient client lifetime, including cleanup,
+    // below Vitest's 120s test timeout; it is not an individual operation timeout.
+    await exercise('cloud', new CloudClient({ apiKey: config.cloud.apiKey, tenant: config.cloud.tenant, database: config.cloud.database, ...(config.cloud.host ? { host: config.cloud.host } : {}), fetchOptions: { signal: AbortSignal.timeout(90000) } }));
   }, 120000);
 });
 

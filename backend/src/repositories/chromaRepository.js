@@ -1,4 +1,5 @@
-const COLLECTIONS = { local: 'supportlens_m1_local', cloud: 'supportlens_m1_cloud' };
+const M1_COLLECTIONS = { local: 'supportlens_m1_local', cloud: 'supportlens_m1_cloud' };
+const COLLECTIONS = { local: 'supportlens_m2_local', cloud: 'supportlens_m2_cloud' };
 
 export function createChromaRepository({ clients, collectionNames = COLLECTIONS }) {
   const collectionCache = new Map();
@@ -32,13 +33,31 @@ export function createChromaRepository({ clients, collectionNames = COLLECTIONS 
         score: result.distances?.[0]?.[index] == null ? null : 1 - result.distances[0][index]
       }));
     },
+    async count(target) {
+      const col = await collection(target);
+      return col.count();
+    },
     async deleteCollection(target) {
       const client = clients[target];
       if (!client) return;
-      await client.deleteCollection({ name: collectionNames[target] });
+      try {
+        await client.deleteCollection({ name: collectionNames[target] });
+      } catch (error) {
+        // Reindex is also used to create an M2 collection for the first time.
+        // Treat an absent derived collection as an empty starting point while
+        // still surfacing connectivity and permission failures.
+        const errorName = error?.name || error?.constructor?.name || error?.constructor;
+        const notFound = error?.status === 404
+          || error?.statusCode === 404
+          || errorName === 'NotFoundError'
+          || errorName === 'ChromaNotFoundError'
+          || error?.message === 'The requested resource could not be found';
+        if (!notFound) throw error;
+      }
       collectionCache.delete(target);
     }
   };
 }
 
 export { COLLECTIONS };
+export { M1_COLLECTIONS };

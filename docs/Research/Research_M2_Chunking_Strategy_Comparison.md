@@ -2,8 +2,9 @@
 
 ## Status
 
-- **Status:** In progress
+- **Status:** Complete
 - **Started:** 2026-09-03
+- **Completed:** 2026-09-05
 - **Related milestone:** `docs/Milestones/Milestone_2_Chunking_Experiments.md`
 
 ## Purpose
@@ -185,7 +186,64 @@ Compared with the current recursive `200/30` production baseline, the recommenda
 - Preserves Recall@4, Recall@5, required-fact coverage, and required-fact completion at `1.00`.
 - Reduces the final strategy-comparison chunk count from 49 recursive chunks to 35 heading-aware chunks.
 
-This recommendation remains pending user approval. No production chunking default has been changed, and no Cloud or Gemini validation has been performed for the candidate yet.
+The user approved this recommendation on 2026-09-05. Phase B then applied and validated it as described below.
+
+## Phase B production validation
+
+### Applied configuration and migration
+
+- Production ingestion now defaults to `heading-aware`, a 240-token maximum, and 15-token overlap.
+- Document registry records store the stable chunking version `m2-heading-aware-240-15`.
+- Normal application traffic now uses `supportlens_m2_local` and `supportlens_m2_cloud`.
+- The prior `supportlens_m1_local` and `supportlens_m1_cloud` collections remain unchanged for rollback.
+- `npm run reindex -- local|cloud` rebuilds only the selected target from its registered source documents, verifies the resulting chunk count, and updates registry records only after the collection succeeds.
+- Registry persistence uses a same-directory temporary file followed by atomic rename. Every mutation rereads the latest state under a shared, bounded cross-process lock, so an upload completed during reindex preparation is merged rather than overwritten. Failed collection work attempts cleanup and preserves the original registry on disk.
+- Ingestion and reindex also share independent Local and Cloud operation locks around their complete Chroma-plus-registry transactions. A reindex therefore cannot delete chunks written by an overlapping same-target upload, while Local and Cloud operations remain independent.
+
+The Local migration reindexed 10 registered documents into 46 chunks: the nine synthetic fixtures produced one chunk each, and the previously uploaded Milestone 1 Markdown document produced 37 chunks. The preserved M1 Local collection still contained 72 chunks. The Cloud migration reindexed only its nine synthetic documents into nine chunks. The Local-only uploaded document was not copied to Cloud or sent to Gemini.
+
+### Retrieval and answer regression evidence
+
+The fixed 15-case retrieval evaluation passed on both migrated targets:
+
+| Target | Recall@1 | Recall@3 | MRR | Exact-ID Recall@1 | Observed retrieval latency |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Local | 1.00 | 1.00 | 1.00 | 1.00 | First request 237.21 ms; later requests 68–99 ms. |
+| Chroma Cloud | 1.00 | 1.00 | 1.00 | 1.00 | First request 5198.83 ms; warm requests approximately 371–436 ms. |
+
+The live Gemini regression used only the Cloud synthetic corpus and `gemini-3.5-flash-lite`:
+
+- 8/8 supported cases returned `answered`.
+- 7/7 unsupported or adversarial cases returned `insufficient_context`.
+- Citation validity and expected-status accuracy were both `1.00`.
+- Three high-risk cases used deterministic fallback without a provider call.
+- Twelve Gemini calls used 6,747 total tokens, with 562.25 mean tokens per call.
+- Provider latency across those calls was 1,581.34 ms mean and 1,550.205 ms median, ranging from 912.04 to 2,802.08 ms.
+
+### Integration and rendered-browser evidence
+
+- Local and Cloud heartbeat integration tests passed.
+- Real Local and Cloud RAG tests both ingested, embedded, retrieved, and cleaned uniquely named transient collections. After the final target-lock correction, Local completed in 606 ms of test time and Cloud in 12.63 s of test time.
+- The rendered status page showed Express, Local Chroma, and Chroma Cloud connected.
+- The rendered Documents page showed 10 Local documents/46 chunks and 9 Cloud documents/9 chunks.
+- For `What does PAYMENT_4027 mean?`, the Retrieval Debugger ranked `payment-errors.md` first on both targets. The observed rendered retrieval times were 369.16 ms Local and 2,847.21 ms Cloud.
+- Cloud Chat returned a grounded answer citing `payment-errors.md` for the payment question. It returned `insufficient_context` for an out-of-scope football question and reported that Gemini was not called.
+- The deterministic suite passed 93 tests with two intentional opt-in skips, the frontend production build passed, JavaScript syntax checks passed, and `git diff --check` passed.
+- A focused GPT-5.6 Sol re-review confirmed that the target-lock concurrency finding was resolved and found no remaining P0–P2 issue in the reviewed Phase B scope.
+
+### Phase B failures and corrections
+
+- The first Local reindex attempt encountered the SDK's `ChromaNotFoundError` when the M2 collection did not yet exist. The repository now recognizes that exact absent-collection response while still surfacing connectivity and permission errors. Registry checksum and M1 collection state were unchanged after the failed attempt.
+- The first live Cloud RAG test exceeded Vitest's 120-second timeout because Chroma SDK collection operations had no request bound; its awaited cleanup continued after the test timeout and left one uniquely named synthetic collection. That exact transient collection was deleted and verified absent.
+- The Cloud integration client now has a 90-second total-lifetime abort signal, below the 120-second test timeout and covering cleanup. The rerun passed in 6.78 seconds, and a collection listing confirmed that no `sl_m1_cloud_*` or `sl_m2_cloud_*` transient collections remained.
+- Final review found that atomic rename alone could still overwrite an upload written by another process between the reindex read and registry update. Registry reads now refresh from disk, and all mutations serialize through the same five-second bounded lock before rereading and merging current state. Regression tests preserve an external addition, verify lock cleanup after success and failure, and prove a held lock fails closed.
+- Follow-up review identified a second interleaving: a concurrent upload could write Chroma chunks before taking the registry lock, after which reindex could delete those chunks while preserving the new registry record. The full ingestion and reindex transactions now use the same target-specific operation lock. A deterministic gated test proves a same-target upload cannot add chunks during rebuild preparation, and another test proves Local and Cloud locks do not block each other. Ingestion fails closed if the lock contract is unavailable.
+- Final review also found that environment values could exceed the selected MiniLM safety envelope or request overlap greater than the chunk. Explicit chunk maxima must now be integers from 1 through 240, and overlap must be a non-negative integer strictly below the effective maximum. Invalid values fail at configuration load and are covered by parameterized tests.
+- The normal backend watch command hit the host's open-file limit (`EMFILE`) during browser setup. The same server entrypoint was run without watch mode for rendered verification; no application behaviour or production configuration changed.
+
+## Final decision
+
+Milestone 2 adopts **heading-aware packing with a 240-token maximum and 15-token overlap**. The controlled experiment showed better first-result ranking and fewer chunks than the Milestone 1 recursive baseline while preserving top-four fact coverage. The migrated Local and Cloud regressions, Gemini checks, and rendered application checks all passed. This is the measured SupportLens default, not a claim that the configuration is universally optimal.
 
 ## Evidence boundary
 
