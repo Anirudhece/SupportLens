@@ -6,6 +6,7 @@
 - **Approved:** 2026-09-03
 - **Started:** 2026-09-03
 - **Completed:** 2026-09-05
+- **Corrective review completed:** 2026-09-06
 - **Related research:** `docs/Research/Research_M2_Chunking_Strategy_Comparison.md`
 
 ## Goal
@@ -275,9 +276,11 @@ At approval time, no production default or normal collection had yet changed. Th
 - Changed the production ingestion default to heading-aware `240/15` and added stable `m2-heading-aware-240-15` chunking-version metadata to document registry records.
 - Moved normal application traffic to `supportlens_m2_local` and `supportlens_m2_cloud`, retaining the M1 names for rollback visibility.
 - Added `npm run reindex -- local|cloud` to rebuild registered documents only in their original target.
-- Added fail-closed reindex validation: prepare embeddings before chunking, verify collection count before changing registry records, use atomic registry persistence, and report cleanup failures.
-- Made registry mutations reread and merge the latest on-disk state under a bounded cross-process lock, preventing a concurrent upload from being overwritten by reindex metadata.
+- Added fail-closed reindex validation: prepare embeddings before chunking, build and verify a unique candidate collection, atomically activate it with the registry's chunk metadata, and delete only failed candidates while retaining the prior active collection.
+- Made normal ingestion, retrieval, seed, and evaluation operations resolve the current per-target collection pointer, so running processes do not remain attached to a deleted Chroma collection UUID after cutover.
+- Made registry mutations reread and merge the latest on-disk state under a bounded cross-process lock, preventing a concurrent upload from being overwritten by reindex metadata. Locks now publish initialized owner metadata plus an immutable per-owner marker atomically, refresh a lease with heartbeats, apply a bounded same-host PID grace period, recover expired abandoned locks only by claiming the exact stale owner, and verify ownership during release.
 - Added independent target-operation locks around complete ingestion and reindex Chroma-plus-registry transactions, preventing same-target chunk deletion races without blocking the other target.
+- Bounded reindex embedding and Chroma writes to batches of 64, with storage writes capped by Chroma's reported server maximum.
 - Added fail-fast production configuration validation: chunk maximum must be 1–240 tokens and overlap must be non-negative and smaller than the maximum.
 - Added deterministic tests for environment validation, collection deletion, atomic registry writes, reindex success, target isolation, empty registries, count mismatches, and cleanup failures.
 - Bounded the opt-in Cloud RAG test client below its test timeout so stalled SDK requests cannot leave the test process waiting indefinitely.
@@ -308,12 +311,21 @@ All migrated records report `m2-heading-aware-240-15`.
 | Rendered Cloud Chat | Grounded payment answer cited `payment-errors.md`; an out-of-scope question returned `insufficient_context` without a Gemini call. |
 | Syntax and whitespace checks | Passed JavaScript syntax checks and `git diff --check`. |
 | Independent final review | GPT-5.6 Sol confirmed the target-lock P1 was resolved and reported no remaining P0–P2 issue in the reviewed Phase B scope. |
+| Post-commit safety review | Found three initial gaps: destructive fixed-name replacement and stale UUID handles, permanently abandoned mkdir locks after crashes, and unbounded corpus embedding/storage batches. Follow-up reviews found non-atomic stale takeover, PID-reuse lockout, ambiguous registry-commit cleanup, permanently cached rejected collection promises, unreachable collections after rollback-history truncation, and delayed legacy-lock takeover races. |
+| Corrective deterministic verification | Passed: 110 tests with two intentional opt-in skips; focused coverage includes candidate failure preservation, pointer switching, exact-owner stale recovery, two delayed legacy contenders, live-owner/PID-grace behavior, abandoned heartbeat artifacts, ambiguous commits, retry after rejected collection lookup, bounded batches, and rollback eviction. |
+| Corrective live integrations | Passed on 2026-09-06: Local heartbeat 39 ms, Cloud heartbeat 983 ms, Local RAG 694 ms, and Cloud RAG 5.58 s of test time; transient test collections were cleaned by their suites. |
+| Safe reindex verification | Local activated `supportlens_m2_local_reindex_1788681363287_d119ba84` with 46 chunks and retained four rollback generations at 46 each. Cloud activated `supportlens_m2_cloud_reindex_1788681344464_02e9cabb` with 9 chunks and retained four rollback generations at 9 each. Both runs reported no evictions or cleanup warnings. |
+| Corrective retrieval evaluation | Local and Cloud both retained Recall@1 `1.00`, Recall@3 `1.00`, MRR `1.00`, and exact-ID Recall@1 `1.00`. Final Local first/warm retrieval was 133.92 ms/65.85–119.69 ms; Cloud was 1,994.14 ms/360.88–630.07 ms. Gemini was intentionally disabled for these duplicate fixed-suite runs. |
+| Corrective live answer | The Cloud question `What does PAYMENT_4027 mean?` returned `answered`, cited the first-ranked `payment-errors.md` chunk, used `gemini-3.5-flash-lite`, and reported 611 total tokens through the new active pointer. |
+| Corrective final review | A bounded GPT-5.6 Sol review of the final application diff reported no remaining actionable P0–P2 findings. |
 
 The first Local reindex failed safely when an absent M2 collection used the SDK's `ChromaNotFoundError` shape; the registry and M1 collection were unchanged. The first Cloud RAG integration attempt also exposed an unbounded SDK request during test cleanup and left one synthetic transient collection. The error handling and test lifetime were corrected, the exact leaked collection was removed, the rerun passed, and a final listing found no transient test collections. Final review then identified and corrected unsafe numeric chunk configuration, a concurrent registry lost-update risk, and a same-target Chroma write/reindex race. These failures are retained in the research record.
 
+A later post-commit review on 2026-09-06 found that the rebuild still deleted the active fixed-name M2 collection before verification, could strand a running backend on the deleted collection UUID, could leave permanent lock directories after a crash, and sent the full corpus through single embedding and Chroma-add operations. The corrective implementation introduced verified candidate collections with atomic pointer activation, crash-recoverable owned locks, and bounded batches. Follow-up review hardened competing stale-lock recovery, bounded PID-liveness grace, ambiguous registry-commit handling, rejected collection-promise retries, and bounded rollback cleanup. Independent inspection also found that the first corrective draft had not passed the registry into the seed and evaluation repositories, an abandoned heartbeat temporary file could obstruct stale recovery, and legacy owner-only locks required an ownership-atomic upgrade path; all were fixed before final live verification.
+
 ### Gate result
 
-All ten documented pass/fail conditions passed. The approved heading-aware `240/15` configuration is active on isolated M2 collections, the M1 collections remain available for rollback, and the master plan is synchronized to **Complete**.
+All ten documented pass/fail conditions passed, and the 2026-09-06 corrective safety regression passed. The approved heading-aware `240/15` configuration is active through independently switched Local and Cloud registry pointers; the prior M2 and M1 collections remain available for rollback, and the master plan is synchronized to **Complete**.
 
 ## Out of scope
 
@@ -332,3 +344,5 @@ All ten documented pass/fail conditions passed. The approved heading-aware `240/
 The user approved starting Milestone 2 on 2026-09-03 after confirming that the existing recursive-overlap strategy should remain the baseline for comparison.
 
 On 2026-09-05, the user approved adopting the evidence-supported heading-aware 240-token, 15-token-overlap configuration, creating versioned M2 Local and Cloud collections, and reindexing existing stored documents while preserving the M1 collections for rollback.
+
+On 2026-09-06, the user approved correcting the post-commit review findings with safe candidate cutover, crash-recoverable locks, bounded reindex batches, regression coverage, live verification, and documentation updates without adding dependencies.

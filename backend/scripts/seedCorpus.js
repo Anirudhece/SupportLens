@@ -11,7 +11,8 @@ const config = loadConfig();
 const target = process.argv[2] || 'local';
 if (!['local', 'cloud'].includes(target)) throw new Error('Usage: npm run seed -- [local|cloud]');
 const clients = createChromaClients(config);
-const ingestion = createIngestionService({ config, embeddings: createLocalEmbeddingProvider({ model: config.embedding.model }), repository: createChromaRepository({ clients }), registry: createDocumentRegistry({ path: config.storage.registryPath }) });
+const registry = createDocumentRegistry({ path: config.storage.registryPath });
+const ingestion = createIngestionService({ config, embeddings: createLocalEmbeddingProvider({ model: config.embedding.model }), repository: createChromaRepository({ clients, registry }), registry });
 const fixtureDir = new URL('../fixtures/corpus/', import.meta.url);
 const names = (await readdir(fixtureDir)).filter((name) => name.endsWith('.md') || name.endsWith('.txt'));
 for (const name of names) {

@@ -194,11 +194,12 @@ The user approved this recommendation on 2026-09-05. Phase B then applied and va
 
 - Production ingestion now defaults to `heading-aware`, a 240-token maximum, and 15-token overlap.
 - Document registry records store the stable chunking version `m2-heading-aware-240-15`.
-- Normal application traffic now uses `supportlens_m2_local` and `supportlens_m2_cloud`.
+- Normal application traffic initially used `supportlens_m2_local` and `supportlens_m2_cloud`. After the 2026-09-06 safety correction, the registry stores an independently active Local and Cloud collection pointer, with those fixed names as fallbacks and preserved rollback generations.
 - The prior `supportlens_m1_local` and `supportlens_m1_cloud` collections remain unchanged for rollback.
-- `npm run reindex -- local|cloud` rebuilds only the selected target from its registered source documents, verifies the resulting chunk count, and updates registry records only after the collection succeeds.
-- Registry persistence uses a same-directory temporary file followed by atomic rename. Every mutation rereads the latest state under a shared, bounded cross-process lock, so an upload completed during reindex preparation is merged rather than overwritten. Failed collection work attempts cleanup and preserves the original registry on disk.
+- `npm run reindex -- local|cloud` rebuilds only the selected target from its registered source documents. It builds and verifies a unique candidate before atomically switching the collection pointer and chunk metadata; failure removes only the candidate and leaves the prior active collection and registry state intact.
+- Registry persistence uses a same-directory temporary file followed by atomic rename. Every mutation rereads the latest state under a shared, bounded cross-process lock, so an upload completed during reindex preparation is merged rather than overwritten. Lock owner metadata and an immutable per-owner marker are atomically published and protected with heartbeat leases, bounded same-host PID grace, exact-owner stale recovery, and ownership-checked release.
 - Ingestion and reindex also share independent Local and Cloud operation locks around their complete Chroma-plus-registry transactions. A reindex therefore cannot delete chunks written by an overlapping same-target upload, while Local and Cloud operations remain independent.
+- Reindex embedding and storage use batches of 64; Chroma writes are additionally capped by the server-reported maximum batch size.
 
 The Local migration reindexed 10 registered documents into 46 chunks: the nine synthetic fixtures produced one chunk each, and the previously uploaded Milestone 1 Markdown document produced 37 chunks. The preserved M1 Local collection still contained 72 chunks. The Cloud migration reindexed only its nine synthetic documents into nine chunks. The Local-only uploaded document was not copied to Cloud or sent to Gemini.
 
@@ -240,6 +241,33 @@ The live Gemini regression used only the Cloud synthetic corpus and `gemini-3.5-
 - Follow-up review identified a second interleaving: a concurrent upload could write Chroma chunks before taking the registry lock, after which reindex could delete those chunks while preserving the new registry record. The full ingestion and reindex transactions now use the same target-specific operation lock. A deterministic gated test proves a same-target upload cannot add chunks during rebuild preparation, and another test proves Local and Cloud locks do not block each other. Ingestion fails closed if the lock contract is unavailable.
 - Final review also found that environment values could exceed the selected MiniLM safety envelope or request overlap greater than the chunk. Explicit chunk maxima must now be integers from 1 through 240, and overlap must be a non-negative integer strictly below the effective maximum. Invalid values fail at configuration load and are covered by parameterized tests.
 - The normal backend watch command hit the host's open-file limit (`EMFILE`) during browser setup. The same server entrypoint was run without watch mode for rendered verification; no application behaviour or production configuration changed.
+
+### Post-commit safety correction — 2026-09-06
+
+A fresh review after commit `59e13f6` found three actionable problems in the first Phase B migration implementation:
+
+1. Reindex deleted the active fixed-name collection before add/count/registry verification. A failure could therefore remove the live corpus, and another backend process could keep a cached SDK handle to the deleted collection UUID after the name was recreated.
+2. The mkdir-based registry and target locks had no stale-owner recovery. Process termination before `finally` could block all later mutations for that target until manual filesystem cleanup.
+3. Reindex embedded the entire corpus in one provider call and sent it through one Chroma add even though Chroma enforces a server maximum batch size.
+
+The corrective design keeps the old collection readable while a uniquely named candidate is embedded and written in bounded batches. After count verification, one atomic registry mutation updates document chunk metadata and the active target pointer. The repository resolves that pointer on every normal operation and caches by target plus collection name, so a running process switches to the new UUID on its next operation while in-flight readers may finish against the retained previous collection. Candidate failure cleanup never targets the active name.
+
+Crash recovery now uses atomically published lock directories containing a unique owner ID, an immutable owner marker, PID, acquisition time, and lease expiry. A heartbeat renews the lease; a recently expired lock receives a bounded grace period while its same-host PID is alive, but an ancient lock remains recoverable if that PID was recycled. Recovery must atomically claim the exact owner marker that was judged stale, revalidate the current owner, and move that lock directory aside before cleanup. Legacy owner-only locks are first upgraded with an exclusive marker. Tests cover abandoned heartbeat files, live-owner protection, PID reuse, two contenders, delayed contenders, and delayed legacy contenders.
+
+Independent inspection caught one wiring omission before live validation: `seedCorpus.js` and `runEval.js` initially created repositories without the registry resolver. Both now share the same registry-backed repository path as the application; experiment and transient integration collections remain explicit and isolated.
+
+A fresh Sol follow-up review found additional race and lifecycle cases in the first corrective draft. Stale takeover now atomically claims and revalidates the exact owner marker so delayed or competing contenders cannot remove a newer lock, PID liveness is bounded to avoid permanent lockout after PID reuse, and recovery removes abandoned heartbeat temporary files. If registry activation throws after a potentially successful write, reindex rereads the durable pointer and never deletes a candidate that may be active. Rejected collection promises are evicted from the repository cache so a transient lookup failure does not poison later requests. Finally, activation returns the exact collection names evicted from the five-generation rollback history; reindex removes them only after commit, excludes fixed fallbacks and the active collection, and reports non-fatal cleanup warnings.
+
+Corrective evidence:
+
+- Deterministic suite: 110 passed, 2 intentional opt-in skips.
+- Frontend production build, JavaScript syntax checks, and `git diff --check`: passed.
+- Local/Cloud heartbeat and real RAG integration tests: passed; measured test times were 39 ms, 983 ms, 694 ms, and 5.58 s respectively.
+- Safe Local reindex: 10 documents, 46 chunks, active `supportlens_m2_local_reindex_1788681363287_d119ba84`; four recorded rollback generations, including the fixed fallback `supportlens_m2_local`, were all readable with 46 chunks each.
+- Safe Cloud reindex: 9 documents, 9 chunks, active `supportlens_m2_cloud_reindex_1788681344464_02e9cabb`; four recorded rollback generations, including the fixed fallback `supportlens_m2_cloud`, were all readable with 9 chunks each.
+- Both final reindexes reported empty eviction and cleanup-warning lists.
+- Fixed retrieval suite on both new active collections: Recall@1, Recall@3, MRR, and exact-ID Recall@1 all `1.00`. Gemini was disabled for these duplicate retrieval runs.
+- Live Cloud supported question: `What does PAYMENT_4027 mean?` returned `answered`, cited `payment-errors.md`, used `gemini-3.5-flash-lite`, and reported 611 total tokens.
 
 ## Final decision
 

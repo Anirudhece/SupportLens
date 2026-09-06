@@ -33,9 +33,9 @@ export function createApp({ config = loadConfig(), clients = createChromaClients
   });
 
   app.use('/health/dependencies', createHealthRoutes({ config: resolvedConfig, clients }));
-  const repository = services.repository || createChromaRepository({ clients });
-  const embeddings = services.embeddings || createLocalEmbeddingProvider({ model: resolvedConfig.embedding.model });
   const registry = services.registry || createDocumentRegistry({ path: resolvedConfig.storage.registryPath });
+  const repository = services.repository || createChromaRepository({ clients, registry });
+  const embeddings = services.embeddings || createLocalEmbeddingProvider({ model: resolvedConfig.embedding.model });
   const ingestion = services.ingestion || createIngestionService({ config: resolvedConfig, embeddings, repository, registry });
   const retrieval = services.retrieval || createRetrievalService({ config: resolvedConfig, embeddings, repository });
   const generation = services.generation || createGenerationService({ config: resolvedConfig });

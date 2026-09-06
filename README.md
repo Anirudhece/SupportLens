@@ -18,7 +18,7 @@ Next.js Documents / Chat / Retrieval Debugger
 
 Embedding generation remains application-owned. `all-MiniLM-L6-v2` runs on the backend machine and supplies precomputed 384-dimensional vectors to either Chroma target. Selecting Chroma Cloud does not move embedding inference to the cloud. Local and Cloud collections are independent.
 
-Production ingestion uses heading-aware packing with a 240-token maximum and 15-token overlap. Packing stays within each Markdown heading, so overlap never crosses into another section. Normal traffic uses the versioned `supportlens_m2_local` and `supportlens_m2_cloud` collections; the M1 collections are retained for rollback.
+Production ingestion uses heading-aware packing with a 240-token maximum and 15-token overlap. Packing stays within each Markdown heading, so overlap never crosses into another section. The document registry stores the active collection name independently for Local and Cloud; normal ingestion, retrieval, seeding, and evaluation resolve that pointer for every operation. The fixed M1/M2 fallback collections and up to five recent active generations are retained for rollback.
 
 Gemini 3.5 Flash-Lite is configured for single-turn, non-streaming structured answers without search or other tools. No larger model is used as an automatic fallback.
 
@@ -136,7 +136,7 @@ npm run reindex -- local
 npm run reindex -- cloud
 ```
 
-Reindexing preserves each document's original target, verifies the new collection count, and updates the registry only after the target succeeds. Back up `backend/.local/documents.json` before a manual migration. Do not run a target reindex unless its Chroma service and registered source files are available.
+Reindexing preserves each document's original target. It embeds and writes in batches of 64, capped by Chroma's reported maximum; builds and verifies a uniquely named candidate collection; then atomically switches the target's active pointer and document chunk metadata. A failed run deletes only its candidate, while the prior active collection and registry state remain available. Back up `backend/.local/documents.json` before a manual migration. Do not run a target reindex unless its Chroma service and registered source files are available.
 
 Reproduce the controlled Local chunking comparison:
 
@@ -195,5 +195,16 @@ Milestone 2 was verified on 2026-09-05:
 - Post-migration Local and Cloud retrieval both achieved Recall@1/Recall@3/MRR/exact-ID Recall@1 of `1.00` on the fixed 15-case set.
 - The live Gemini regression passed 8/8 supported and 7/7 unsupported/adversarial cases with citation validity and expected-status accuracy of `1.00`.
 - Deterministic tests passed 93 tests with two opt-in skips; the production frontend build, Local/Cloud integrations, and rendered Local/Cloud debugger and Chat checks passed.
+
+Milestone 2 reindex safety was hardened and reverified on 2026-09-06 after a post-commit review:
+
+- Reindex now keeps the active collection readable while a candidate is built and verified, then atomically switches the registry pointer; a failed candidate cannot delete the active collection.
+- Repository operations resolve the current pointer, preventing a running process from remaining attached to a deleted Chroma collection UUID. Seed and evaluation commands use the same pointer-aware repository.
+- Registry and target locks use atomic owner publication, immutable per-owner markers, heartbeat leases, bounded same-host PID liveness grace, ownership-atomic stale-lock recovery, and ownership-checked release.
+- Reindex embedding and Chroma writes use bounded batches of 64, capped by Chroma's server-reported maximum.
+- Ambiguous registry-write outcomes are resolved by rereading the durable pointer before candidate cleanup; rejected Chroma collection promises are evicted so later requests can retry; rollback history is bounded and evicted generations are cleaned only after a successful activation.
+- Deterministic tests passed 110 tests with two opt-in skips; the production build and all four Local/Cloud heartbeat and RAG integration commands passed.
+- Safe reindex produced active 46-chunk Local and 9-chunk Cloud candidates while preserving both preceding active generations and the fixed M2 fallbacks at their original 46 and 9 chunks. The fixed retrieval suite remained `1.00` on Recall@1, Recall@3, MRR, and exact-ID Recall@1 for both targets.
+- A live Cloud answer for `What does PAYMENT_4027 mean?` returned `answered`, cited `payment-errors.md`, and used `gemini-3.5-flash-lite` through the new active pointer.
 
 See [Milestone 2](docs/Milestones/Milestone_2_Chunking_Experiments.md) and [Research M2](docs/Research/Research_M2_Chunking_Strategy_Comparison.md) for the controlled matrix, rejected pilots, migration safeguards, failures, and final evidence.
