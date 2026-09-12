@@ -14,6 +14,7 @@ const config = loadConfig();
 const configured = config.cloudConfigured;
 
 describe.skipIf(!configured)('real Chroma Cloud heartbeat', () => {
+  // Allow cold Cloud calls to outlast the application's bounded 5s heartbeat.
   it('confirms the Cloud server through the Express endpoint', async () => {
     const client = new CloudClient({
       apiKey: config.cloud.apiKey,
@@ -28,7 +29,7 @@ describe.skipIf(!configured)('real Chroma Cloud heartbeat', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ target: 'cloud', status: 'connected' });
-  });
+  }, config.health.heartbeatTimeoutMs + 2000);
 });
 
 if (!configured) {

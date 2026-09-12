@@ -1,0 +1,75 @@
+[
+  {
+    "id": "m2-approved-runtime-list",
+    "question": "Which packages are approved backend runtime dependencies, including their pinned versions?",
+    "expectedSource": "platform-operations.md",
+    "kind": "supported",
+    "exactIdentifier": true,
+    "requiredFacts": ["@chroma-core/default-embed@0.1.9", "@huggingface/transformers@3.8.1", "@google/genai@2.19.0", "chromadb@3.5.0", "express@5.2.1", "zod@4.5.4"]
+  },
+  {
+    "id": "m2-upgrade-proration-and-failure",
+    "question": "What happens to the invoice and plan when an upgrade payment fails?",
+    "expectedSource": "billing-platform.md",
+    "kind": "supported",
+    "requiredFacts": ["prorated charge", "account stays on its previous plan", "update the stored payment method", "retrying the upgrade"]
+  },
+  {
+    "id": "m2-upgrade-idempotency",
+    "question": "How does the upgrade workflow prevent a retry from creating a second charge?",
+    "expectedSource": "billing-platform.md",
+    "kind": "supported",
+    "requiredFacts": ["idempotent for a single request key", "returns the original billing operation", "new request key", "two different request keys"]
+  },
+  {
+    "id": "m2-refund-window",
+    "question": "How long is a duplicate-charge report eligible for refund review, and what does the reviewer check?",
+    "expectedSource": "billing-platform.md",
+    "kind": "supported",
+    "requiredFacts": ["30 calendar days", "invoice ID", "payment provider reference"]
+  },
+  {
+    "id": "m2-token-error",
+    "question": "What should a client do when it receives ERR_AUTH_1003?",
+    "expectedSource": "security-and-api.md",
+    "kind": "supported",
+    "exactIdentifier": true,
+    "requiredFacts": ["ERR_AUTH_1003", "obtain a fresh token", "retry the original request once"]
+  },
+  {
+    "id": "m2-token-error-contrast",
+    "question": "How is ERR_AUTH_1004 different from the expired-token error?",
+    "expectedSource": "security-and-api.md",
+    "kind": "supported",
+    "exactIdentifier": true,
+    "requiredFacts": ["ERR_AUTH_1004", "token signature could not be verified", "ERR_AUTH_1003"]
+  },
+  {
+    "id": "m2-rate-limit-two-facts",
+    "question": "What is the standard workspace request limit and what should the client do after a 429?",
+    "expectedSource": "security-and-api.md",
+    "kind": "supported",
+    "requiredFacts": ["120 requests per minute", "status 429", "Retry-After", "endpoint family"]
+  },
+  {
+    "id": "m2-auth-incident-boundary",
+    "question": "Which details should be captured for an authentication incident, and which credential must not be captured?",
+    "expectedSource": "security-and-api.md",
+    "kind": "supported",
+    "requiredFacts": ["request ID", "UTC timestamp", "endpoint family", "Do not capture the access token itself"]
+  },
+  {
+    "id": "m2-embedding-storage-boundary",
+    "question": "When Cloud storage is selected, where are embeddings generated and what does Chroma store?",
+    "expectedSource": "platform-operations.md",
+    "kind": "supported",
+    "requiredFacts": ["Xenova/all-MiniLM-L6-v2", "application machine", "Chroma stores vectors"]
+  },
+  {
+    "id": "m2-production-top-four",
+    "question": "How many chunks does production retrieval return, and how should experiments calculate fact coverage?",
+    "expectedSource": "platform-operations.md",
+    "kind": "supported",
+    "requiredFacts": ["four chunks", "Recall@5", "first four chunks"]
+  }
+]

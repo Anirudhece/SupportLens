@@ -7,7 +7,12 @@ const config = { frontendOrigin: 'http://localhost:3000', cloudConfigured: true,
 function makeApp() {
   const repository = { addChunks: vi.fn().mockResolvedValue(), query: vi.fn().mockResolvedValue([{ id: 'chunk-1', content: 'PAYMENT_4027 means expired payment method.', metadata: { source: 'payment-errors.md', section: 'Payment errors' }, score: 0.9 }]) };
   const embeddings = { model: 'test-model', tokenizer: null, embed: vi.fn().mockResolvedValue([[0.1, 0.2]]) };
-  const registry = { list: vi.fn().mockResolvedValue([]), findByChecksum: vi.fn().mockResolvedValue(null), add: vi.fn().mockImplementation(async (document) => document) };
+  const registry = {
+    list: vi.fn().mockResolvedValue([]),
+    findByChecksum: vi.fn().mockResolvedValue(null),
+    add: vi.fn().mockImplementation(async (document) => document),
+    withTargetLock: vi.fn((_target, callback) => callback())
+  };
   const generation = { answer: vi.fn().mockResolvedValue({ status: 'answered', answer: 'Update the payment method.', citationIds: ['chunk-1'], usage: null }) };
   return { app: createApp({ config, clients: { local: {}, cloud: {} }, services: { repository, embeddings, registry, generation } }), repository, embeddings, generation, registry };
 }

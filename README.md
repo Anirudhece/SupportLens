@@ -1,6 +1,6 @@
 # SupportLens
 
-SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0 and 1 are complete. Milestone 1 establishes the first end-to-end document, embedding, retrieval, grounded-answer, citation, visibility, guardrail, and evaluation baseline.
+SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–2 are complete. Milestone 2 uses controlled retrieval and fact-coverage experiments to replace the initial recursive chunking baseline with a measured heading-aware configuration.
 
 ## Current architecture
 
@@ -17,6 +17,8 @@ Next.js Documents / Chat / Retrieval Debugger
 ```
 
 Embedding generation remains application-owned. `all-MiniLM-L6-v2` runs on the backend machine and supplies precomputed 384-dimensional vectors to either Chroma target. Selecting Chroma Cloud does not move embedding inference to the cloud. Local and Cloud collections are independent.
+
+Production ingestion uses heading-aware packing with a 240-token maximum and 15-token overlap. Packing stays within each Markdown heading, so overlap never crosses into another section. The document registry stores the active collection name independently for Local and Cloud; normal ingestion, retrieval, seeding, and evaluation resolve that pointer for every operation. The fixed M1/M2 fallback collections and up to five recent active generations are retained for rollback.
 
 Gemini 3.5 Flash-Lite is configured for single-turn, non-streaming structured answers without search or other tools. No larger model is used as an automatic fallback.
 
@@ -109,7 +111,7 @@ POST /api/v1/answers
 
 Document upload uses multipart form data with one `file`, an optional `target`, and a 5 MB maximum. Retrieval and answer requests accept JSON with `question`, `target`, and optional integer `nResults`/`topK` from 1 to 10.
 
-## Seed and evaluate the baseline
+## Seed, reindex, and evaluate
 
 With the selected Chroma target available, seed the nine synthetic support documents:
 
@@ -126,6 +128,23 @@ npm run eval -- cloud
 ```
 
 The evaluator reports Recall@1, Recall@3, MRR, exact-identifier retrieval, per-case latency, expected answer status, citation validity, fallback behaviour, and provider usage. When `GEMINI_API_KEY` is absent, answer metrics are explicitly marked skipped rather than passed.
+
+Rebuild registered documents into the current M2 collection for one target:
+
+```bash
+npm run reindex -- local
+npm run reindex -- cloud
+```
+
+Reindexing preserves each document's original target. It embeds and writes in batches of 64, capped by Chroma's reported maximum; builds and verifies a uniquely named candidate collection; then atomically switches the target's active pointer and document chunk metadata. A failed run deletes only its candidate, while the prior active collection and registry state remain available. Back up `backend/.local/documents.json` before a manual migration. Do not run a target reindex unless its Chroma service and registered source files are available.
+
+Reproduce the controlled Local chunking comparison:
+
+```bash
+npm run experiment:chunking
+```
+
+The experiment uses isolated temporary collections and compares recursive size, recursive overlap, and heading-aware packing against the same synthetic corpus and fixed questions.
 
 ## Verification commands
 
@@ -167,3 +186,25 @@ Baseline verified on 2026-09-01 and the post-completion chunk-loss regression re
 - Post-completion Markdown regression: fixed silent loss of punctuation-heavy content such as scoped npm packages and semantic versions; the affected Local document was re-ingested and the user confirmed that Chat displayed all six exact approved dependencies.
 
 See [Milestone 1](docs/Milestones/Milestone_1_Basic_Vector_RAG.md) for the approved gate and [Research M1](docs/Research/Research_M1_Basic_RAG_Baseline.md) for measured evidence, limitations, and failures.
+
+Milestone 2 was verified on 2026-09-05:
+
+- The final controlled Local matrix evaluated 25 cases across 10 configurations. Heading-aware `240/15` improved Recall@1 from `0.7895` to `0.8947`, Recall@3 from `0.9474` to `1.00`, MRR from `0.8728` to `0.9474`, and exact-ID Recall@1 from `0.6667` to `0.8333` compared with recursive `200/30`.
+- The selected strategy preserved Recall@4, Recall@5, required-fact coverage, and required-fact completion at `1.00`, while producing 35 chunks versus 49 for recursive `240/15` in the final strategy comparison.
+- Migration produced 46 Local chunks from 10 documents and 9 Cloud chunks from 9 synthetic documents. M1 collections were preserved.
+- Post-migration Local and Cloud retrieval both achieved Recall@1/Recall@3/MRR/exact-ID Recall@1 of `1.00` on the fixed 15-case set.
+- The live Gemini regression passed 8/8 supported and 7/7 unsupported/adversarial cases with citation validity and expected-status accuracy of `1.00`.
+- Deterministic tests passed 93 tests with two opt-in skips; the production frontend build, Local/Cloud integrations, and rendered Local/Cloud debugger and Chat checks passed.
+
+Milestone 2 reindex safety was hardened and reverified on 2026-09-06 after a post-commit review:
+
+- Reindex now keeps the active collection readable while a candidate is built and verified, then atomically switches the registry pointer; a failed candidate cannot delete the active collection.
+- Repository operations resolve the current pointer, preventing a running process from remaining attached to a deleted Chroma collection UUID. Seed and evaluation commands use the same pointer-aware repository.
+- Registry and target locks use atomic owner publication, immutable per-owner markers, heartbeat leases, bounded same-host PID liveness grace, ownership-atomic stale-lock recovery, and ownership-checked release.
+- Reindex embedding and Chroma writes use bounded batches of 64, capped by Chroma's server-reported maximum.
+- Ambiguous registry-write outcomes are resolved by rereading the durable pointer before candidate cleanup; rejected Chroma collection promises are evicted so later requests can retry; rollback history is bounded and evicted generations are cleaned only after a successful activation.
+- Deterministic tests passed 110 tests with two opt-in skips; the production build and all four Local/Cloud heartbeat and RAG integration commands passed.
+- Safe reindex produced active 46-chunk Local and 9-chunk Cloud candidates while preserving both preceding active generations and the fixed M2 fallbacks at their original 46 and 9 chunks. The fixed retrieval suite remained `1.00` on Recall@1, Recall@3, MRR, and exact-ID Recall@1 for both targets.
+- A live Cloud answer for `What does PAYMENT_4027 mean?` returned `answered`, cited `payment-errors.md`, and used `gemini-3.5-flash-lite` through the new active pointer.
+
+See [Milestone 2](docs/Milestones/Milestone_2_Chunking_Experiments.md) and [Research M2](docs/Research/Research_M2_Chunking_Strategy_Comparison.md) for the controlled matrix, rejected pilots, migration safeguards, failures, and final evidence.

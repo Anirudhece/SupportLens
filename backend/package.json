@@ -9,6 +9,8 @@
     "test": "vitest run tests --exclude tests/chroma.local.integration.test.js --exclude tests/chroma.cloud.integration.test.js",
     "seed": "node --env-file-if-exists=.env scripts/seedCorpus.js",
     "eval": "node --env-file-if-exists=.env scripts/runEval.js",
+    "experiment:chunking": "node --env-file-if-exists=.env scripts/runChunkingExperiments.js",
+    "reindex": "node --env-file-if-exists=.env scripts/reindex.js",
     "test:local": "vitest run tests/chroma.local.integration.test.js",
     "test:cloud": "vitest run tests/chroma.cloud.integration.test.js",
     "test:rag:local": "RUN_LIVE_RAG=true vitest run tests/chroma.rag.integration.test.js",

@@ -3,13 +3,16 @@ import { loadConfig } from '../src/config/environment.js';
 import { createChromaClients } from '../src/clients/chromaClients.js';
 import { createChromaRepository } from '../src/repositories/chromaRepository.js';
 import { createLocalEmbeddingProvider } from '../src/embedding/localMiniLm.js';
+import { createDocumentRegistry } from '../src/services/documentRegistry.js';
 import { createRetrievalService } from '../src/services/retrievalService.js';
 import { createGenerationService } from '../src/services/generationService.js';
 
 const config = loadConfig();
 const target = process.argv[2] || 'local';
 const cases = JSON.parse(await readFile(new URL('../evals/seed-cases.json', import.meta.url), 'utf8'));
-const retrieval = createRetrievalService({ config, embeddings: createLocalEmbeddingProvider({ model: config.embedding.model }), repository: createChromaRepository({ clients: createChromaClients(config) }) });
+const clients = createChromaClients(config);
+const registry = createDocumentRegistry({ path: config.storage.registryPath });
+const retrieval = createRetrievalService({ config, embeddings: createLocalEmbeddingProvider({ model: config.embedding.model }), repository: createChromaRepository({ clients, registry }) });
 const generation = config.generation.apiKey ? createGenerationService({ config }) : null;
 const rows = [];
 for (const testCase of cases) {

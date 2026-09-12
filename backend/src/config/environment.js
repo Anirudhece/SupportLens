@@ -18,9 +18,32 @@ function parseBoundedPositiveInteger(value, fallback, maximum) {
   return Number.isInteger(parsed) && parsed > 0 && parsed <= maximum ? parsed : fallback;
 }
 
+function parseExplicitBoundedInteger(name, value, fallback, minimum, maximum) {
+  if (value === undefined || value === '') return fallback;
+  const parsed = Number(value);
+  if (Number.isInteger(parsed) && parsed >= minimum && parsed <= maximum) return parsed;
+  throw new Error(`Invalid ${name}: expected an integer between ${minimum} and ${maximum}.`);
+}
+
+function parseChunkOverlap(value, fallback, maxTokens) {
+  const overlap = parseExplicitBoundedInteger('CHUNK_OVERLAP_TOKENS', value, fallback, 0, Number.MAX_SAFE_INTEGER);
+  if (overlap >= maxTokens) {
+    throw new Error(`Invalid CHUNK_OVERLAP_TOKENS: expected a value between 0 and ${maxTokens - 1}.`);
+  }
+  return overlap;
+}
+
+function parseChunkStrategy(value) {
+  if (value === undefined || value === '') return 'heading-aware';
+  if (value === 'recursive' || value === 'heading-aware') return value;
+  throw new Error('Invalid CHUNK_STRATEGY: expected "recursive" or "heading-aware".');
+}
+
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 5000;
 
 export function loadConfig(env = process.env) {
+  const chunkTokens = parseExplicitBoundedInteger('CHUNK_MAX_TOKENS', env.CHUNK_MAX_TOKENS, 240, 1, 240);
+  const chunkOverlap = parseChunkOverlap(env.CHUNK_OVERLAP_TOKENS, 15, chunkTokens);
   const cloud = {
     apiKey: env.CHROMA_API_KEY || '',
     tenant: env.CHROMA_TENANT || '',
@@ -59,8 +82,9 @@ export function loadConfig(env = process.env) {
       maxOutputTokens: parseBoundedPositiveInteger(env.GENERATION_MAX_OUTPUT_TOKENS, 1024, 4096)
     },
     rag: {
-      chunkTokens: parsePositiveInteger(env.CHUNK_MAX_TOKENS, 200),
-      chunkOverlap: parsePositiveInteger(env.CHUNK_OVERLAP_TOKENS, 30),
+      chunkStrategy: parseChunkStrategy(env.CHUNK_STRATEGY),
+      chunkTokens,
+      chunkOverlap,
       retrievalK: parsePositiveInteger(env.RETRIEVAL_K, 4),
       maxUploadBytes: parsePositiveInteger(env.MAX_UPLOAD_BYTES, 5 * 1024 * 1024)
     }
