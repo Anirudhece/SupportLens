@@ -1,6 +1,6 @@
 # SupportLens
 
-SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–2 are complete. Milestone 3 is in progress: metadata filtering, opt-in hybrid retrieval, and opt-in local reranking have been implemented and compared, with the final browser-upload and production-setting checkpoints pending.
+SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–3 are complete. Milestone 3 added metadata filtering, opt-in hybrid retrieval, and opt-in local reranking, then compared them on a fixed synthetic dataset. Vector-only remains the evidence-based default.
 
 ## Current architecture
 
@@ -225,4 +225,4 @@ Milestone 2 reindex safety was hardened and reverified on 2026-09-06 after a pos
 
 See [Milestone 2](docs/Milestones/Milestone_2_Chunking_Experiments.md) and [Research M2](docs/Research/Research_M2_Chunking_Strategy_Comparison.md) for the controlled matrix, rejected pilots, migration safeguards, failures, and final evidence.
 
-Milestone 3 is not yet marked complete. Its controlled eight-case Local retrieval experiment found no overall Recall@1/MRR improvement from hybrid or reranking; reranking improved one of two exact-ID top ranks but increased latency and moved one paraphrase down. Local/Cloud metadata-filtered retrieval and the targeted synthetic Gemini guardrail passed. The rendered browser upload with labels remains pending because the browser-control session could not attach a local file. See [Milestone 3](docs/Milestones/Milestone_3_Advanced_Retrieval.md) and [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md) for the exact results and limitations.
+Milestone 3 is complete. Its controlled eight-case Local retrieval experiment found no overall Recall@1/MRR improvement from hybrid or reranking; reranking improved one of two exact-ID top ranks but increased latency and moved one paraphrase down. Local/Cloud metadata-filtered retrieval, the targeted synthetic Gemini guardrail, and rendered blank/matching/nonmatching filter flows passed. Native file-picker automation was explicitly waived after real labeled API ingestion, the rendered ready record, and rendered retrieval behavior passed. See [Milestone 3](docs/Milestones/Milestone_3_Advanced_Retrieval.md) and [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md) for the exact results and limitations.

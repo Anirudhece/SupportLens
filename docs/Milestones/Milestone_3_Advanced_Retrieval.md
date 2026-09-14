@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-- **Status:** In progress — approved implementation underway; completion evidence pending.
+- **Status:** Complete — gate accepted on 2026-09-15.
 - **Consolidation and document creation approved:** 2026-09-13.
 - **Implementation choices and scope approved:** 2026-09-13.
 - **Started:** 2026-09-13.
@@ -125,15 +125,17 @@ Files affected: `backend/src/validation/metadata.js`, `backend/src/services/{ing
 
 The completed Local comparison is in [Research M3](../Research/Research_M3_Advanced_Retrieval.md), with raw output under ignored `backend/.local/evals/`. On five answerable source-ranking cases, vector-only and reranked retrieval both achieved Recall@1 `0.60`, Recall@3 `1.00`, and MRR `0.80`; hybrid lowered Recall@3 to `0.80` and MRR to `0.75`. Reranking improved exact-ID Recall@1 from `0.00` to `0.50`, but moved one paraphrase down and increased warm median retrieval latency from `68.90` to `125.73` ms. All filtered cases respected labels; no-match returned zero chunks. Required-fact coverage@4 was `1.00` for every stage on this deliberately small synthetic set.
 
-Recommendation for user review: **keep vector-only as the production default and hybrid/reranked modes opt-in**. This is not a claim that reranking is universally worse, and no default setting was changed. The user-facing decision checkpoint remains open until the user accepts or revises this recommendation.
+Final production-setting decision: **keep vector-only as the production default and hybrid/reranked modes opt-in**. The user accepted this recommendation on 2026-09-15. This is not a claim that reranking is universally worse; it reflects the measured result on the fixed M3 dataset.
 
 Verified checks so far: after the final validation correction, `npm test` passed 132 deterministic cases with four expected opt-in live skips; `npm run build` and `git diff --check` passed. The focused validation/reindex tests passed 28 cases. Local and Cloud heartbeat checks passed; expanded Local and Cloud real RAG integration each passed two cases with two opposite-target/opt-in skips; and the opt-in synthetic Gemini answer/empty-context check passed. An initial expanded Local integration failure was traced to an invalid multi-field `where` object in the direct *test assertion*, corrected to Chroma's `$and` form, then rerun successfully. The Browser Debugger rendered filtered-empty and reranked stage views, and Local/Cloud Chat rendered filtered-empty fallbacks with Gemini not called. The browser upload control rendered but its file chooser was denied local-file access, so a completed rendered labeled upload has not been verified.
 
-Follow-up correction on 2026-09-14: explicitly supplied `null`, empty, or whitespace-only metadata filters now return HTTP 400, while omitted fields remain optional. API regressions cover all three fields; the reindex test verifies that every rebuilt chunk retains all three labels and numeric upload version. Chat and Retrieval Debugger previously sent empty strings for untouched optional inputs, producing a 400 after this stricter validation. Their shared frontend API handler now omits blank values and trims nonblank ones. A direct request-normalization check, frontend production build, and `git diff --check` passed. A rendered browser retry with all filters blank has not yet been reported.
+Follow-up correction on 2026-09-14: explicitly supplied `null`, empty, or whitespace-only metadata filters now return HTTP 400, while omitted fields remain optional. API regressions cover all three fields; the reindex test verifies that every rebuilt chunk retains all three labels and numeric upload version. Chat and Retrieval Debugger previously sent empty strings for untouched optional inputs, producing a 400 after this stricter validation. Their shared frontend API handler now omits blank values and trims nonblank ones. A direct request-normalization check, frontend production build, and `git diff --check` passed. The subsequent rendered Chat retry with all filters blank succeeded and displayed `Filters: none`.
 
-## Remaining gate before completion
+## Completion decision — 2026-09-15
 
-1. Obtain the user's decision on the evidence-based production setting. No default promotion is implied by implementing opt-in modes.
-2. Complete one rendered Documents upload with explicit labels and verify the resulting ready record; the browser-control session could not attach a local file. API ingestion and real Local/Cloud retrieval tests already passed but do not satisfy this visual check.
-3. Confirm in the rendered Chat or Retrieval Debugger that a question with all three optional filters blank succeeds after the frontend correction. Automated request normalization and build passed, but this browser retry has not been reported.
-4. After those user checks and the default decision, synchronize this milestone and master-plan status. Until then, **In progress** is accurate.
+1. The rendered blank-filter Chat flow passed: the request answered successfully, showed no active filters, and returned grounded citations.
+2. A synthetic labeled document was ingested through the real Local API with `product=billing`, `documentType=guide`, and `documentVersion=v2`; the rendered Documents page showed the ready record. Matching Hybrid retrieval returned only that document across vector, keyword, and fused stages. A nonmatching product returned zero results, and Chat returned `insufficient_context` with Gemini not called.
+3. Native macOS file selection could not be automated because computer-use permission was denied. The user explicitly waived that UI-mechanism-only check based on the successful real ingestion pipeline, rendered record, and rendered retrieval evidence. It is recorded as **waived with equivalent evidence**, not as an executed file-picker test.
+4. The user accepted vector-only as the default, with Hybrid and Reranked retained as optional comparison modes.
+
+The documented gate is satisfied with the explicit waiver above. **Milestone 3 is Complete.**
