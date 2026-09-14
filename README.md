@@ -1,6 +1,6 @@
 # SupportLens
 
-SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–2 are complete. Milestone 2 uses controlled retrieval and fact-coverage experiments to replace the initial recursive chunking baseline with a measured heading-aware configuration.
+SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–2 are complete. Milestone 3 is in progress: metadata filtering, opt-in hybrid retrieval, and opt-in local reranking have been implemented and compared, with the final browser-upload and production-setting checkpoints pending.
 
 ## Current architecture
 
@@ -19,6 +19,8 @@ Next.js Documents / Chat / Retrieval Debugger
 Embedding generation remains application-owned. `all-MiniLM-L6-v2` runs on the backend machine and supplies precomputed 384-dimensional vectors to either Chroma target. Selecting Chroma Cloud does not move embedding inference to the cloud. Local and Cloud collections are independent.
 
 Production ingestion uses heading-aware packing with a 240-token maximum and 15-token overlap. Packing stays within each Markdown heading, so overlap never crosses into another section. The document registry stores the active collection name independently for Local and Cloud; normal ingestion, retrieval, seeding, and evaluation resolve that pointer for every operation. The fixed M1/M2 fallback collections and up to five recent active generations are retained for rollback.
+
+New uploads may carry optional exact-match `product`, `documentType`, and `documentVersion` labels. These are separate from the numeric upload revision. Existing unlabeled documents remain available without filters but do not match a requested label. Retrieval defaults to vector-only; `hybrid` and `reranked` are explicit opt-in modes. Hybrid uses Chroma's case-sensitive document-text matching plus vector search and RRF, not BM25. Reranking runs the local `Xenova/ms-marco-MiniLM-L-6-v2` cross-encoder; its model files are downloaded once on first use. Filters restrict retrieval, but they are not authorization or tenant isolation.
 
 Gemini 3.5 Flash-Lite is configured for single-turn, non-streaming structured answers without search or other tools. No larger model is used as an automatic fallback.
 
@@ -109,7 +111,7 @@ POST /api/v1/retrieval
 POST /api/v1/answers
 ```
 
-Document upload uses multipart form data with one `file`, an optional `target`, and a 5 MB maximum. Retrieval and answer requests accept JSON with `question`, `target`, and optional integer `nResults`/`topK` from 1 to 10.
+Document upload uses multipart form data with one `file`, an optional `target`, optional `product`, `documentType`, and `documentVersion` strings, and a 5 MB maximum. Retrieval and answer requests accept JSON with `question`, `target`, optional `filters` containing those exact-label fields, optional `mode` (`vector`, `hybrid`, or `reranked`), and optional integer `nResults`/`topK` from 1 to 10. Unknown filter fields and unsupported modes return HTTP 400. Filtered no-match answers fall back without calling Gemini.
 
 ## Seed, reindex, and evaluate
 
@@ -146,6 +148,14 @@ npm run experiment:chunking
 
 The experiment uses isolated temporary collections and compares recursive size, recursive overlap, and heading-aware packing against the same synthetic corpus and fixed questions.
 
+Reproduce the Milestone 3 controlled Local retrieval comparison after starting Local Chroma:
+
+```bash
+npm run experiment:retrieval
+```
+
+It uses version-controlled synthetic documents/cases, a uniquely named temporary collection, and the production heading-aware chunks, embeddings, and keyword term extraction. It prints vector-only, keyword-only, hybrid, and reranked metrics, then writes per-case stage/filter/latency evidence under ignored `backend/.local/evals/` and deletes only its own collection. The measured M3 comparison did not justify changing the vector-only production default; see [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md).
+
 ## Verification commands
 
 Run deterministic backend tests and build the frontend:
@@ -170,6 +180,12 @@ npm run test:integration:rag:cloud
 ```
 
 The RAG integration commands create uniquely named collections, exercise real local MiniLM precomputed embeddings, and clean the collections afterward. Cloud commands fail clearly when required credentials are absent.
+
+For the opt-in synthetic live Gemini answer and empty-context check, with a configured `GEMINI_API_KEY`:
+
+```bash
+RUN_LIVE_GEMINI=true npm run test --workspace backend -- tests/chroma.rag.integration.test.js
+```
 
 ## Current evidence
 
@@ -208,3 +224,5 @@ Milestone 2 reindex safety was hardened and reverified on 2026-09-06 after a pos
 - A live Cloud answer for `What does PAYMENT_4027 mean?` returned `answered`, cited `payment-errors.md`, and used `gemini-3.5-flash-lite` through the new active pointer.
 
 See [Milestone 2](docs/Milestones/Milestone_2_Chunking_Experiments.md) and [Research M2](docs/Research/Research_M2_Chunking_Strategy_Comparison.md) for the controlled matrix, rejected pilots, migration safeguards, failures, and final evidence.
+
+Milestone 3 is not yet marked complete. Its controlled eight-case Local retrieval experiment found no overall Recall@1/MRR improvement from hybrid or reranking; reranking improved one of two exact-ID top ranks but increased latency and moved one paraphrase down. Local/Cloud metadata-filtered retrieval and the targeted synthetic Gemini guardrail passed. The rendered browser upload with labels remains pending because the browser-control session could not attach a local file. See [Milestone 3](docs/Milestones/Milestone_3_Advanced_Retrieval.md) and [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md) for the exact results and limitations.

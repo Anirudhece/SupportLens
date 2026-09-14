@@ -8,9 +8,19 @@ async function request(path, options = {}) {
 }
 
 export function listDocuments(target = 'local') { return request(`/api/v1/documents?target=${target}`); }
-export function uploadDocument(file, target = 'local') {
+export function uploadDocument(file, target = 'local', metadata = {}) {
   const form = new FormData(); form.append('file', file); form.append('target', target);
+  for (const [key, value] of Object.entries(metadata)) if (value?.trim()) form.append(key, value.trim());
   return request('/api/v1/documents', { method: 'POST', body: form });
 }
-export function retrieve(question, target = 'local') { return request('/api/v1/retrieval', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, target }) }); }
-export function answerQuestion(question, target = 'local') { return request('/api/v1/answers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, target }) }); }
+
+function normalizeFilters(filters = {}) {
+  return Object.fromEntries(
+    Object.entries(filters || {})
+      .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+}
+
+export function retrieve(question, target = 'local', filters = {}, mode = 'vector') { return request('/api/v1/retrieval', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, target, filters: normalizeFilters(filters), mode }) }); }
+export function answerQuestion(question, target = 'local', filters = {}) { return request('/api/v1/answers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, target, filters: normalizeFilters(filters) }) }); }

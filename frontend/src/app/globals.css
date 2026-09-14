@@ -106,6 +106,9 @@ button:disabled { opacity: .6; cursor: wait; }
 .list-panel li, .answer-panel li { display: flex; justify-content: space-between; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--panel-border); }
 .list-panel li span, .retrieval-list span { color: var(--muted); }
 .query-form { display: grid; gap: 10px; margin-top: 24px; }
+.metadata-fields { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.metadata-fields label { display: grid; gap: 6px; flex: 1 1 150px; font-size: .85rem; }
+.metadata-fields input { width: 100%; }
 textarea, input[type="text"], .query-form input { width: 100%; border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px; background: #0c111d; color: var(--text); font: inherit; }
 textarea { min-height: 130px; resize: vertical; }
 .notice { color: var(--warning); }

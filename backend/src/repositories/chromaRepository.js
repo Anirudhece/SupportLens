@@ -50,9 +50,9 @@ export function createChromaRepository({ clients, collectionNames = COLLECTIONS,
         await addBatch(target, chunks.slice(start, start + boundedSize), collectionName);
       }
     },
-    async query(target, embedding, nResults = 4) {
+    async query(target, embedding, nResults = 4, { where } = {}) {
       const col = await collection(target);
-      const result = await col.query({ queryEmbeddings: [embedding], nResults });
+      const result = await col.query({ queryEmbeddings: [embedding], nResults, ...(where ? { where } : {}) });
       return (result.ids?.[0] || []).map((id, index) => ({
         id,
         content: result.documents?.[0]?.[index] || '',
@@ -60,6 +60,25 @@ export function createChromaRepository({ clients, collectionNames = COLLECTIONS,
         distance: result.distances?.[0]?.[index] ?? null,
         score: result.distances?.[0]?.[index] == null ? null : 1 - result.distances[0][index]
       }));
+    },
+    async keyword(target, terms, limit = 20, { where } = {}) {
+      const col = await collection(target);
+      const boundedLimit = Math.min(50, Math.max(1, Number(limit) || 20));
+      if (!terms.length) return [];
+      const matches = new Map();
+      for (const term of terms.slice(0, 8)) {
+        const result = await col.get({
+          ...(where ? { where } : {}),
+          whereDocument: { $contains: term },
+          limit: boundedLimit
+        });
+        (result.ids || []).forEach((id, index) => {
+          const existing = matches.get(id) || { id, content: result.documents?.[index] || '', metadata: result.metadatas?.[index] || {}, termHits: [] };
+          existing.termHits.push(term);
+          matches.set(id, existing);
+        });
+      }
+      return [...matches.values()].sort((a, b) => b.termHits.length - a.termHits.length || a.id.localeCompare(b.id)).slice(0, boundedLimit);
     },
     async count(target, { collectionName } = {}) {
       const col = await collection(target, collectionName);

@@ -12,6 +12,7 @@ import { createIngestionService } from './services/ingestionService.js';
 import { createRetrievalService } from './services/retrievalService.js';
 import { createGenerationService } from './services/generationService.js';
 import { createChromaRepository } from './repositories/chromaRepository.js';
+import { createLocalReranker } from './services/rerankerService.js';
 
 export function createApp({ config = loadConfig(), clients = createChromaClients(config), services = {} } = {}) {
   const resolvedConfig = {
@@ -37,7 +38,8 @@ export function createApp({ config = loadConfig(), clients = createChromaClients
   const repository = services.repository || createChromaRepository({ clients, registry });
   const embeddings = services.embeddings || createLocalEmbeddingProvider({ model: resolvedConfig.embedding.model });
   const ingestion = services.ingestion || createIngestionService({ config: resolvedConfig, embeddings, repository, registry });
-  const retrieval = services.retrieval || createRetrievalService({ config: resolvedConfig, embeddings, repository });
+  const reranker = services.reranker || createLocalReranker({ model: resolvedConfig.rag.rerankerModel });
+  const retrieval = services.retrieval || createRetrievalService({ config: resolvedConfig, embeddings, repository, reranker });
   const generation = services.generation || createGenerationService({ config: resolvedConfig });
   app.use('/api/v1/documents', createDocumentRoutes({ config: resolvedConfig, ingestion, registry }));
   app.use('/api/v1', createRagRoutes({ retrieval, generation }));

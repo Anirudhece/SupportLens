@@ -2,7 +2,7 @@
 
 ## Document status
 
-- **Status:** Active product requirements; Milestone 1 complete
+- **Status:** Active product requirements; Milestones 0–2 complete, Milestone 3 planned
 - **Product:** SupportLens — Production RAG Knowledge Assistant
 - **Purpose:** Define the product problem, scope, requirements, constraints, and success criteria before implementation begins.
 - **Source of truth:** This PRD is derived from `docs/PROJECT_CONTEXT.md`. Undecided implementation details remain open rather than being assumed.
@@ -229,17 +229,15 @@ The MVP does not need hybrid search, reranking, a replacement vector database, b
 
 ## 11. Planned capability progression
 
-The detailed milestones and their measurable gates will be defined separately in `docs/SupportLens_plan.md`. The current intended progression is:
+The detailed milestones and their measurable gates are tracked in `docs/SupportLens_plan.md`. The five-milestone progression is:
 
-1. Basic vector RAG with application-owned embeddings and ChromaDB.
-2. Chunk-size and overlap experiments.
-3. Metadata filtering.
-4. Hybrid keyword and vector retrieval.
-5. Reranking.
-6. Reliable citations and grounded fallback behaviour.
-7. Golden dataset and evaluation metrics.
-8. Automated regression testing.
-9. Optional managed-vector-database comparison after the ChromaDB implementation is understood and evaluated.
+0. Environment setup (complete).
+1. Basic vector RAG with application-owned embeddings and ChromaDB (complete).
+2. Chunking experiments and the selected production strategy (complete).
+3. Advanced Retrieval: metadata filtering, hybrid keyword/vector retrieval, and a measured reranking capability (planned).
+4. Trust, Evaluation, and Regression Protection: strengthened citations and grounded fallback, a reviewed golden dataset, and automated quality-regression checks (planned).
+
+Combining milestones does not remove FR-7 through FR-10 or their separate acceptance evidence. An optional managed-vector-database comparison is not a committed milestone.
 
 ## 12. Success criteria
 
@@ -276,8 +274,9 @@ The following decisions require research or milestone planning before implementa
 - Production document and manifest storage beyond the approved local filesystem baseline, including a possible object store such as S3.
 - Production operational metadata storage beyond the Milestone 1 JSON registry.
 - Evidence-based confidence thresholds for unsupported questions.
-- Keyword-search implementation and hybrid-score fusion method.
-- Reranking model or service.
+- Metadata fields, upload/seed labelling, filter semantics, and treatment of already-ingested documents for Milestone 3.
+- Keyword-search implementation and hybrid-score fusion method for Milestone 3.
+- Reranking model or service, resource limits, and adoption criteria for Milestone 3.
 - Authentication, authorization, and knowledge-base tenancy.
 - Deployment target, observability stack, cost limits, latency targets, and dataset scale.
 - Evaluation annotation process and acceptance thresholds.

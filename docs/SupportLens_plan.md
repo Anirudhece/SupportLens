@@ -34,14 +34,12 @@ An AI agent must not silently fill in an unresolved implementation decision mere
 | [Milestone 0 — Environment Setup](Milestones/Milestone_0_Environment_Setup.md) | Complete | Establish the JavaScript workspace and prove Local and Cloud ChromaDB connectivity across the frontend and backend. | All documented implementation, Local, Cloud, automated, command, and interactive browser gates passed. |
 | [Milestone 1 — Basic Vector RAG](Milestones/Milestone_1_Basic_Vector_RAG.md) | Complete | Build the first explicit ingestion, retrieval, answer-generation, citation, and retrieval-visibility path. | Passed: deterministic tests and build; real MiniLM ingestion/retrieval on Local and Cloud; structured Gemini answers; citation integrity; critical guardrails; fixed baseline evaluation; both rendered browser flows; and evidence documentation. |
 | [Milestone 2 — Chunking Experiments](Milestones/Milestone_2_Chunking_Experiments.md) | Complete | Compared recursive chunk-size, overlap, and heading-aware packing, then migrated to the approved heading-aware `240/15` default. | Passed: reproducible Local matrix; lossless/token-safe chunks; retrieval, fact-coverage, chunk-count, and latency evidence; atomic candidate cutover with retained M1/M2 rollback generations; crash-recoverable locks; bounded batches; Local, Cloud, Gemini, build, and rendered-browser regressions. |
-| Milestone 3 — Metadata Filtering | Planned | Add and verify metadata-aware retrieval. | To be defined during milestone planning. |
-| Milestone 4 — Hybrid Retrieval | Planned | Combine keyword and vector retrieval for semantic questions and exact identifiers. | To be defined during milestone planning. |
-| Milestone 5 — Reranking | Planned | Rerank a broader candidate set and measure whether relevance improves. | To be defined during milestone planning. |
-| Milestone 6 — Citations and Grounded Fallback | Planned | Strengthen claim-to-source traceability and unsupported-question behaviour. | To be defined during milestone planning. |
-| Milestone 7 — Golden Dataset and Evaluation | Planned | Build the full evaluation dataset and measure retrieval and answer quality separately. | To be defined from real baseline evidence. |
-| Milestone 8 — Automated Regression Testing | Planned | Turn approved evaluation checks into repeatable regression protection. | To be defined after the evaluation workflow is reliable. |
+| [Milestone 3 — Advanced Retrieval](Milestones/Milestone_3_Advanced_Retrieval.md) | In progress | Add metadata filtering and hybrid keyword/vector retrieval, then measure a reranking capability against the same retrieval cases. | Core implementation, controlled Local comparison, Local/Cloud integrations, targeted Gemini, deterministic tests, and build verified. Explicit blank/null filter validation, its tests, user decision on the default, and rendered labeled-upload check remain pending. |
+| Milestone 4 — Trust, Evaluation, and Regression Protection | Planned | Strengthen citations and grounded fallback, build a reviewed golden dataset, and automate quality-regression checks. | To be defined during Milestone 4 planning; no detailed document or implementation approval yet. |
 
 An optional managed-vector-database comparison is not a committed milestone. It may be proposed only after the local ChromaDB implementation is understood and evaluated.
+
+The former Milestones 3–5 were combined into Advanced Retrieval, and the former Milestones 6–8 were combined into Trust, Evaluation, and Regression Protection. Their capabilities remain individually testable. The combined plan has five milestones numbered 0–4; Milestones 0–2 retain their completed records and numbering.
 
 ## Naming convention
 
