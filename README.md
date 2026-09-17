@@ -2,6 +2,8 @@
 
 SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–3 are complete. Milestone 3 added metadata filtering, opt-in hybrid retrieval, and opt-in local reranking, then compared them on a fixed synthetic dataset. Vector-only remains the evidence-based default.
 
+Milestone 4 is approved and In progress: claim-level citations, approximately 45 reviewed synthetic golden cases, deterministic fact/source checks, explicitly opt-in live Gemini evaluation, a confidence-score experiment, and reproducible quality-regression reports. Dataset review and acceptance of the first complete baseline remain pending. See [Milestone 4](docs/Milestones/Milestone_4_Trust_Evaluation_Regression_Protection.md) for scope and gates; implementation alone is not a passing evaluation.
+
 ## Current architecture
 
 ```text
@@ -156,6 +158,22 @@ npm run experiment:retrieval
 
 It uses version-controlled synthetic documents/cases, a uniquely named temporary collection, and the production heading-aware chunks, embeddings, and keyword term extraction. It prints vector-only, keyword-only, hybrid, and reranked metrics, then writes per-case stage/filter/latency evidence under ignored `backend/.local/evals/` and deletes only its own collection. The measured M3 comparison did not justify changing the vector-only production default; see [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md).
 
+Run the draft Milestone 4 Local retrieval/regression report after starting Local Chroma:
+
+```bash
+npm run eval:regression
+```
+
+The command uses a uniquely named temporary collection, validates the 45-case draft golden fixture and corpus manifest, records retrieval metrics and confidence-cutoff evidence, cleans up its collection, and writes uniquely named JSON/Markdown reports under ignored `backend/.local/evals/`. It is deliberately fail-closed: while annotations are draft, live answer checks are skipped, or no accepted comparable baseline is supplied, it exits nonzero and explains why. Merely configuring `GEMINI_API_KEY` does not trigger calls.
+
+After the golden annotations and first baseline are explicitly reviewed and accepted, the complete live command is:
+
+```bash
+npm run eval:regression -- --live --baseline=/absolute/path/to/accepted-baseline.json
+```
+
+Live cases run sequentially with bounded calls and no model fallback. Do not mark a candidate report accepted merely to make the command green; see [Milestone 4](docs/Milestones/Milestone_4_Trust_Evaluation_Regression_Protection.md).
+
 ## Verification commands
 
 Run deterministic backend tests and build the frontend:
@@ -226,3 +244,5 @@ Milestone 2 reindex safety was hardened and reverified on 2026-09-06 after a pos
 See [Milestone 2](docs/Milestones/Milestone_2_Chunking_Experiments.md) and [Research M2](docs/Research/Research_M2_Chunking_Strategy_Comparison.md) for the controlled matrix, rejected pilots, migration safeguards, failures, and final evidence.
 
 Milestone 3 is complete. Its controlled eight-case Local retrieval experiment found no overall Recall@1/MRR improvement from hybrid or reranking; reranking improved one of two exact-ID top ranks but increased latency and moved one paraphrase down. Local/Cloud metadata-filtered retrieval, the targeted synthetic Gemini guardrail, and rendered blank/matching/nonmatching filter flows passed. Native file-picker automation was explicitly waived after real labeled API ingestion, the rendered ready record, and rendered retrieval behavior passed. See [Milestone 3](docs/Milestones/Milestone_3_Advanced_Retrieval.md) and [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md) for the exact results and limitations.
+
+Milestone 4 implementation is in progress. Its 45 explicit cases (34 answerable and 11 refusals) were user-reviewed and accepted on 2026-09-16. Local retrieval passed Recall@3 `1.00`, MRR `0.9857`, exact-ID Recall@1 `1.00`, filter correctness `1.00`, zero errors, and cleanup; overlapping scores rejected a fixed confidence cutoff. After an initial free-tier RPM interruption, the approved 4.5-second M4 pacing completed all 45 answers through 38 Gemini calls. Citation validity, critical guardrails, filters, and unsupported-answer behavior passed; expected-status accuracy was `0.8889` and fact coverage `0.7179`, below the `0.85` gate. The deterministic suite passed 144 tests with four expected live skips. No answer baseline is accepted while these quality failures remain, so M4 is not complete.

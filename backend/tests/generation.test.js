@@ -5,7 +5,7 @@ const config = { generation: { apiKey: 'test', model: 'gemini-3.5-flash-lite', t
 
 describe('Gemini generation guardrails', () => {
   it('validates structured answers and sends no tools', async () => {
-    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', answer: 'Update the card.', citationIds: ['chunk-1'] }), usageMetadata: { totalTokenCount: 10 } });
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', claims: [{ text: 'Update the card.', citationIds: ['chunk-1'] }] }), usageMetadata: { totalTokenCount: 10 } });
     const service = createGenerationService({ config, client: { models: { generateContent } } });
     const result = await service.answer({ question: 'Why did payment fail?', results: [{ id: 'chunk-1', content: 'Payment failed.', metadata: { source: 'billing.md' } }] });
     expect(result.citationIds).toEqual(['chunk-1']);
@@ -34,7 +34,7 @@ describe('Gemini generation guardrails', () => {
   });
 
   it('filters a lower-ranked malicious distractor while retaining clean context and citations', async () => {
-    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', answer: 'Update the payment method.', citationIds: ['clean-1'] }) });
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', claims: [{ text: 'Update the payment method.', citationIds: ['clean-1'] }] }) });
     const service = createGenerationService({ config, client: { models: { generateContent } } });
     const result = await service.answer({
       question: 'Why did payment fail?',
@@ -62,7 +62,7 @@ describe('Gemini generation guardrails', () => {
   });
 
   it('rejects a citation to a filtered unsafe chunk', async () => {
-    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', answer: 'x', citationIds: ['unsafe-1'] }) });
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', claims: [{ text: 'x', citationIds: ['unsafe-1'] }] }) });
     const service = createGenerationService({ config, client: { models: { generateContent } } });
     await expect(service.answer({
       question: 'Why did payment fail?',

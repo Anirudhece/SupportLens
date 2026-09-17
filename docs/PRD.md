@@ -234,8 +234,8 @@ The detailed milestones and their measurable gates are tracked in `docs/SupportL
 0. Environment setup (complete).
 1. Basic vector RAG with application-owned embeddings and ChromaDB (complete).
 2. Chunking experiments and the selected production strategy (complete).
-3. Advanced Retrieval: metadata filtering, hybrid keyword/vector retrieval, and a measured reranking capability (planned).
-4. Trust, Evaluation, and Regression Protection: strengthened citations and grounded fallback, a reviewed golden dataset, and automated quality-regression checks (planned).
+3. Advanced Retrieval: metadata filtering, hybrid keyword/vector retrieval, and a measured reranking capability (complete).
+4. Trust, Evaluation, and Regression Protection: strengthened citations and grounded fallback, a reviewed golden dataset, and automated quality-regression checks (approved; in progress).
 
 Combining milestones does not remove FR-7 through FR-10 or their separate acceptance evidence. An optional managed-vector-database comparison is not a committed milestone.
 
@@ -273,12 +273,11 @@ The following decisions require research or milestone planning before implementa
 - Whether measured answer or guardrail failures justify comparing Flash-Lite with a larger Gemini model.
 - Production document and manifest storage beyond the approved local filesystem baseline, including a possible object store such as S3.
 - Production operational metadata storage beyond the Milestone 1 JSON registry.
-- Evidence-based confidence thresholds for unsupported questions.
-- Metadata fields, upload/seed labelling, filter semantics, and treatment of already-ingested documents for Milestone 3.
-- Keyword-search implementation and hybrid-score fusion method for Milestone 3.
-- Reranking model or service, resource limits, and adoption criteria for Milestone 3.
+- Whether the approved Milestone 4 confidence experiment finds a useful cutoff; adoption requires measured evidence, not an assumed similarity threshold.
 - Authentication, authorization, and knowledge-base tenancy.
 - Deployment target, observability stack, cost limits, latency targets, and dataset scale.
-- Evaluation annotation process and acceptance thresholds.
+- User review of Milestone 4's draft golden annotations and acceptance of its first complete baseline. The annotation process and initial gates are approved in the milestone document; measured results remain pending.
+
+Milestone 3 resolved metadata labels (`product`, `documentType`, `documentVersion`), exact AND filter semantics, unlabeled-document behavior, Chroma document-text keyword matching with RRF, and an opt-in local cross-encoder. Vector-only remains default based on the measured comparison. Milestone 4's approved scope and explicit numeric gates are recorded in `docs/Milestones/Milestone_4_Trust_Evaluation_Regression_Protection.md`; they do not constitute measured success or production guarantees.
 
 These questions must be resolved through approved milestone plans and, where meaningful, documented research rather than silently assumed during coding.

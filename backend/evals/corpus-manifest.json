@@ -1,0 +1,14 @@
+{
+  "version": "synthetic-corpus-v1",
+  "documents": {
+    "payment-errors.md": {"product":"billing","documentType":"guide","documentVersion":"v2"},
+    "billing-upgrades.md": {"product":"billing","documentType":"guide","documentVersion":"v2"},
+    "refunds.md": {"product":"billing","documentType":"guide","documentVersion":"v2"},
+    "authentication.md": {"product":"identity","documentType":"guide","documentVersion":"v2"},
+    "api-rate-limits.md": {"product":"platform","documentType":"guide","documentVersion":"v2"},
+    "webhooks.md": {"product":"platform","documentType":"guide","documentVersion":"v2"},
+    "data-export.md": {"product":"billing","documentType":"guide","documentVersion":"v2"},
+    "incidents.md": {"product":"platform","documentType":"runbook","documentVersion":"v2"},
+    "security-test-instructions.md": {"product":"platform","documentType":"security-fixture","documentVersion":"v2"}
+  }
+}

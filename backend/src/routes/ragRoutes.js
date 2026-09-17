@@ -58,14 +58,14 @@ export function createRagRoutes({ retrieval, generation }) {
     const nResults = nResultsFrom(request, response); if (nResults === null) return;
     const filters = filtersFrom(request, response); if (filters === null) return;
     const mode = modeFrom(request, response); if (mode === null) return;
-    if (/system prompt|reveal.*(secret|prompt|key)|ignore.*(instructions|knowledge base)|jailbreak|bypass.*auth/i.test(question)) {
-      response.json({ target, question, filters, status: 'insufficient_context', answer: "I couldn't find that in the knowledge base.", citationIds: [], retrieval: { question, target, filters, results: [], latencyMs: 0 } });
+    if (/system prompt|(?:tell me|show me|print|extract).*(?:api key|secret|prompt|hidden context)|reveal.*(?:secret|prompt|hidden context)|ignore.*(instructions|knowledge base)|jailbreak|bypass.*auth/i.test(question)) {
+      response.json({ target, question, filters, status: 'insufficient_context', answer: "I couldn't find that in the knowledge base.", citationIds: [], claims: [], retrieval: { question, target, filters, results: [], latencyMs: 0 } });
       return;
     }
     try {
       const retrievalResult = await retrieval.retrieve({ question, target, nResults, filters, mode });
       if (!retrievalResult.results.length) {
-        response.json({ target, question, filters, status: 'insufficient_context', answer: "I couldn't find that in the knowledge base.", citationIds: [], retrieval: retrievalResult });
+        response.json({ target, question, filters, status: 'insufficient_context', answer: "I couldn't find that in the knowledge base.", citationIds: [], claims: [], retrieval: retrievalResult });
         return;
       }
       const answer = await generation.answer({ question, results: retrievalResult.results });
