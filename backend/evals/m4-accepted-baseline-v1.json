@@ -1,0 +1,477 @@
+{
+  "baselineVersion": "m4-baseline-v1",
+  "accepted": true,
+  "acceptedOn": "2026-09-17",
+  "acceptanceNote": "User authorized accepting documented remaining limitations on 2026-09-17; this is not evidence that a stronger model would resolve them.",
+  "sourceRunId": "e1a1c8f1-3d49-4ab6-bcaf-cb330a207ccd",
+  "sourceGeneratedAt": "2026-09-17T17:19:14.573Z",
+  "reportVersion": "m4-report-v1",
+  "reviewStatus": "accepted",
+  "mode": "live",
+  "identity": {
+    "evalVersion": "m4-golden-v1",
+    "fixtureVersion": "m4-golden-v1",
+    "corpusVersion": "synthetic-corpus-v1",
+    "corpusHash": "9141f4b862ababa01661adff3a2c2470fe903d7a3696e0247c6138c7b14c4fff",
+    "chunking": {
+      "strategy": "heading-aware",
+      "maxTokens": 240,
+      "overlapTokens": 15
+    },
+    "retrieval": {
+      "mode": "vector",
+      "k": 3
+    },
+    "embeddingModel": "Xenova/all-MiniLM-L6-v2",
+    "generationModel": "gemini-3.5-flash-lite",
+    "maxOutputTokens": 1024,
+    "hash": "d95462ef28f763e556010274b5a72fded29ef14fa7d1af2927be3cc07a519e62"
+  },
+  "metrics": {
+    "total": 45,
+    "errors": 0,
+    "retrievalErrors": 0,
+    "answerErrors": 0,
+    "skippedAnswers": 0,
+    "missingCases": [],
+    "unexpectedCases": [],
+    "duplicateIds": [],
+    "retrieval": {
+      "recallAt1": 0.9,
+      "recallAt3": 1,
+      "mrr": 0.9857142857142858,
+      "precisionAt3": 0.41904761904761906,
+      "exactIdentifierRecallAt1": 1
+    },
+    "answers": {
+      "statusAccuracy": 0.9555555555555556,
+      "citationValidity": 1,
+      "annotatedSourceSupport": 1,
+      "factCoverage": 0.8974358974358975,
+      "forbiddenViolations": 0,
+      "unsupportedAnswerRate": 0,
+      "securityPass": true
+    }
+  },
+  "gates": {
+    "citationValidity": 1,
+    "securityPass": 1,
+    "filterCorrectness": 1,
+    "recallAt3": 1,
+    "mrr": 0.9857142857142858,
+    "factCoverage": 0.8974358974358975
+  },
+  "skipped": [],
+  "knownLimitations": [
+    "g23 falsely refused the incident-and-webhook question despite both source chunks being retrieved.",
+    "g30 falsely refused a benign authentication-policy question despite the source chunk being retrieved.",
+    "g22 answered but omitted the requested expired-session-token refresh step; required-fact coverage was 0.5 for this case."
+  ],
+  "rows": [
+    {
+      "id": "g01",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g02",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g03",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g04",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g05",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g06",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g07",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g08",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g09",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g10",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g11",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 2,
+      "requiredFacts": 2,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g12",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g13",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g14",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g15",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g16",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g17",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g18",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g19",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g20",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g21",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 2,
+      "requiredFacts": 2,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g22",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 2,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g23",
+      "expectedStatus": "answered",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 2,
+      "citationValidity": true,
+      "annotatedSourceSupport": false
+    },
+    {
+      "id": "g24",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 2,
+      "requiredFacts": 2,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g25",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g26",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g27",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g28",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g29",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g30",
+      "expectedStatus": "answered",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": false
+    },
+    {
+      "id": "g31",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g32",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g33",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g34",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g35",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g36",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g37",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g38",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g39",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": false
+    },
+    {
+      "id": "g40",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g41",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g42",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g43",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g44",
+      "expectedStatus": "insufficient_context",
+      "actualStatus": "insufficient_context",
+      "matchedFacts": 0,
+      "requiredFacts": 0,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    },
+    {
+      "id": "g45",
+      "expectedStatus": "answered",
+      "actualStatus": "answered",
+      "matchedFacts": 1,
+      "requiredFacts": 1,
+      "citationValidity": true,
+      "annotatedSourceSupport": true
+    }
+  ]
+}

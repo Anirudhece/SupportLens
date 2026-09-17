@@ -13,6 +13,23 @@ describe('Gemini generation guardrails', () => {
     expect(generateContent.mock.calls[0][0].config.safetySettings).toHaveLength(4);
     expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({ thinkingLevel: 'minimal' });
     expect(generateContent.mock.calls[0][0].config.maxOutputTokens).toBe(1024);
+    expect(generateContent.mock.calls[0][0].config.systemInstruction).toContain('Examine every retrieved context chunk');
+    expect(generateContent.mock.calls[0][0].config.systemInstruction).toContain('answer every supported part');
+    expect(generateContent.mock.calls[0][0].config.systemInstruction).toContain('Return status answered when at least one requested part is supported');
+  });
+
+  it('includes the retrieved document version in the grounded context header', async () => {
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', claims: [{ text: 'Use the v2 billing flow.', citationIds: ['chunk-v2'] }] }) });
+    const service = createGenerationService({ config, client: { models: { generateContent } } });
+    await service.answer({ question: 'Which billing flow applies?', results: [{ id: 'chunk-v2', content: 'Use the v2 billing flow.', metadata: { source: 'billing.md', section: 'Upgrades', documentVersion: 'v2' } }] });
+    expect(generateContent.mock.calls[0][0].contents).toContain('[chunk-v2] billing.md · Upgrades · Document version: v2');
+  });
+
+  it('handles retrieved results without metadata or a document version', async () => {
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify({ status: 'answered', claims: [{ text: 'Use the billing flow.', citationIds: ['chunk-1'] }] }) });
+    const service = createGenerationService({ config, client: { models: { generateContent } } });
+    await service.answer({ question: 'Which billing flow applies?', results: [{ id: 'chunk-1', content: 'Use the billing flow.' }] });
+    expect(generateContent.mock.calls[0][0].contents).toContain('[chunk-1] unknown\nUse the billing flow.');
   });
 
   it('classifies a provider safety block as a safe error', async () => {
