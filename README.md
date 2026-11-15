@@ -1,6 +1,8 @@
 # SupportLens
 
-SupportLens is a production-oriented RAG knowledge assistant being built as an explicit, measurable learning project. Milestones 0–2 are complete. Milestone 2 uses controlled retrieval and fact-coverage experiments to replace the initial recursive chunking baseline with a measured heading-aware configuration.
+SupportLens is a production-oriented RAG knowledge assistant built as an explicit, measurable learning project. All five planned milestones (0–4) are complete. Milestone 3 added metadata filtering, opt-in hybrid retrieval, and opt-in local reranking, then compared them on a fixed synthetic dataset. Vector-only remains the evidence-based default.
+
+Milestone 4 added claim-level citations, 45 reviewed synthetic golden cases, deterministic fact/source checks, explicitly opt-in live Gemini evaluation, a confidence-score experiment, and reproducible quality-regression reports. Its accepted baseline and independent comparison passed the documented gates. Two answerable questions still falsely refuse and are recorded as known limitations, not concealed as correct answers. See [Milestone 4](docs/Milestones/Milestone_4_Trust_Evaluation_Regression_Protection.md) and [Research M4](docs/Research/Research_M4_Trust_Evaluation_Regression_Protection.md) for evidence; milestone completion is not a production-readiness claim.
 
 ## Current architecture
 
@@ -19,6 +21,8 @@ Next.js Documents / Chat / Retrieval Debugger
 Embedding generation remains application-owned. `all-MiniLM-L6-v2` runs on the backend machine and supplies precomputed 384-dimensional vectors to either Chroma target. Selecting Chroma Cloud does not move embedding inference to the cloud. Local and Cloud collections are independent.
 
 Production ingestion uses heading-aware packing with a 240-token maximum and 15-token overlap. Packing stays within each Markdown heading, so overlap never crosses into another section. The document registry stores the active collection name independently for Local and Cloud; normal ingestion, retrieval, seeding, and evaluation resolve that pointer for every operation. The fixed M1/M2 fallback collections and up to five recent active generations are retained for rollback.
+
+New uploads may carry optional exact-match `product`, `documentType`, and `documentVersion` labels. These are separate from the numeric upload revision. Existing unlabeled documents remain available without filters but do not match a requested label. Chat and Retrieval Debugger omit blank optional filters; explicitly supplied blank or null API filter values return HTTP 400. Retrieval defaults to vector-only; `hybrid` and `reranked` are explicit opt-in modes. Hybrid uses Chroma's case-sensitive document-text matching plus vector search and RRF, not BM25. Reranking runs the local `Xenova/ms-marco-MiniLM-L-6-v2` cross-encoder; its model files are downloaded once on first use. Filters restrict retrieval, but they are not authorization or tenant isolation.
 
 Gemini 3.5 Flash-Lite is configured for single-turn, non-streaming structured answers without search or other tools. No larger model is used as an automatic fallback.
 
@@ -109,7 +113,7 @@ POST /api/v1/retrieval
 POST /api/v1/answers
 ```
 
-Document upload uses multipart form data with one `file`, an optional `target`, and a 5 MB maximum. Retrieval and answer requests accept JSON with `question`, `target`, and optional integer `nResults`/`topK` from 1 to 10.
+Document upload uses multipart form data with one `file`, an optional `target`, optional `product`, `documentType`, and `documentVersion` strings, and a 5 MB maximum. Retrieval and answer requests accept JSON with `question`, `target`, optional `filters` containing those exact-label fields, optional `mode` (`vector`, `hybrid`, or `reranked`), and optional integer `nResults`/`topK` from 1 to 10. Unknown filter fields and unsupported modes return HTTP 400. Filtered no-match answers fall back without calling Gemini.
 
 ## Seed, reindex, and evaluate
 
@@ -146,6 +150,30 @@ npm run experiment:chunking
 
 The experiment uses isolated temporary collections and compares recursive size, recursive overlap, and heading-aware packing against the same synthetic corpus and fixed questions.
 
+Reproduce the Milestone 3 controlled Local retrieval comparison after starting Local Chroma:
+
+```bash
+npm run experiment:retrieval
+```
+
+It uses version-controlled synthetic documents/cases, a uniquely named temporary collection, and the production heading-aware chunks, embeddings, and keyword term extraction. It prints vector-only, keyword-only, hybrid, and reranked metrics, then writes per-case stage/filter/latency evidence under ignored `backend/.local/evals/` and deletes only its own collection. The measured M3 comparison did not justify changing the vector-only production default; see [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md).
+
+Run the Milestone 4 Local retrieval-only report after starting Local Chroma:
+
+```bash
+npm run eval:regression
+```
+
+The command uses a uniquely named temporary collection, validates the reviewed 45-case golden fixture and corpus manifest, records retrieval metrics and confidence-cutoff evidence, cleans up its collection, and writes uniquely named JSON/Markdown reports under ignored `backend/.local/evals/`. Retrieval-only mode exits nonzero because live answer checks are skipped; this does not mean retrieval failed. Merely configuring `GEMINI_API_KEY` does not trigger calls.
+
+To compare a complete live run with the accepted versioned baseline, run from the repository root:
+
+```bash
+npm run eval:regression -- --live --baseline=evals/m4-accepted-baseline-v1.json
+```
+
+Live cases run sequentially with a 4.5-second minimum interval between Gemini calls, bounded timeouts, no automatic retries, and no model fallback. The command exits nonzero for missing/incompatible baselines, skipped checks, execution failures, required-gate failures, or measured regressions. One transient timeout interrupted a comparison attempt; a separately recorded manual rerun passed. See [Milestone 4](docs/Milestones/Milestone_4_Trust_Evaluation_Regression_Protection.md).
+
 ## Verification commands
 
 Run deterministic backend tests and build the frontend:
@@ -170,6 +198,12 @@ npm run test:integration:rag:cloud
 ```
 
 The RAG integration commands create uniquely named collections, exercise real local MiniLM precomputed embeddings, and clean the collections afterward. Cloud commands fail clearly when required credentials are absent.
+
+For the opt-in synthetic live Gemini answer and empty-context check, with a configured `GEMINI_API_KEY`:
+
+```bash
+RUN_LIVE_GEMINI=true npm run test --workspace backend -- tests/chroma.rag.integration.test.js
+```
 
 ## Current evidence
 
@@ -208,3 +242,7 @@ Milestone 2 reindex safety was hardened and reverified on 2026-09-06 after a pos
 - A live Cloud answer for `What does PAYMENT_4027 mean?` returned `answered`, cited `payment-errors.md`, and used `gemini-3.5-flash-lite` through the new active pointer.
 
 See [Milestone 2](docs/Milestones/Milestone_2_Chunking_Experiments.md) and [Research M2](docs/Research/Research_M2_Chunking_Strategy_Comparison.md) for the controlled matrix, rejected pilots, migration safeguards, failures, and final evidence.
+
+Milestone 3 is complete. Its controlled eight-case Local retrieval experiment found no overall Recall@1/MRR improvement from hybrid or reranking; reranking improved one of two exact-ID top ranks but increased latency and moved one paraphrase down. Local/Cloud metadata-filtered retrieval, the targeted synthetic Gemini guardrail, and rendered blank/matching/nonmatching filter flows passed. Native file-picker automation was explicitly waived after real labeled API ingestion, the rendered ready record, and rendered retrieval behavior passed. See [Milestone 3](docs/Milestones/Milestone_3_Advanced_Retrieval.md) and [Research M3](docs/Research/Research_M3_Advanced_Retrieval.md) for the exact results and limitations.
+
+Milestone 4 is complete with known limitations. Its reviewed 45-case corpus passed Local retrieval (Recall@3 `1.00`, MRR `0.9857`), filters, citation validity, answered-claim source support, and critical security checks. The final independent live comparison completed all 45 cases with no execution errors, skipped cases, or baseline regressions; required-fact coverage was `36/39` (`0.9231`) against the `0.85` gate. The full deterministic suite passed 147 tests with four expected opt-in live skips, the frontend build passed, prior Cloud smoke passed, and Local Chat visibly showed separately cited claims. The score-calibration experiment rejected a fixed cutoff. `g23` and `g30` still falsely refused; their behavior is documented in the accepted baseline, and no larger-model remedy has been tested. This is a measured portfolio milestone, not production-readiness certification.

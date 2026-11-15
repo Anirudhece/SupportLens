@@ -249,6 +249,26 @@ describe('M2 registry reindex', () => {
     expect(embeddings.embed.mock.calls.map(([texts]) => texts.length)).toEqual([2, 2, 2]);
   });
 
+  it('preserves document metadata and numeric version on every produced chunk', async () => {
+    const documents = [{
+      id: 'billing-doc', target: 'local', name: 'billing.md', checksum: 'checksum', version: 7,
+      product: 'billing', documentType: 'guide', documentVersion: 'v2', status: 'ready', storedPath: '/tmp/billing.md'
+    }];
+    const prepared = await prepareReindexRecords({
+      documents,
+      config: { ...config, rag: { ...config.rag, chunkTokens: 2, chunkOverlap: 0 } },
+      embeddings: makeEmbeddings(),
+      readDocument: vi.fn().mockResolvedValue(Buffer.from('source')),
+      extract: vi.fn().mockResolvedValue({ text: 'one two three four five six' })
+    });
+
+    expect(prepared.records.length).toBeGreaterThan(1);
+    expect(prepared.records.every(({ metadata }) => metadata.product === 'billing'
+      && metadata.documentType === 'guide'
+      && metadata.documentVersion === 'v2'
+      && metadata.version === 7)).toBe(true);
+  });
+
   it('fails closed before touching Chroma when Cloud is not configured', async () => {
     const registry = makeRegistry([]);
     const repository = makeRepository(0);

@@ -92,6 +92,9 @@ export async function prepareReindexRecords({ documents, config, embeddings, rea
       section: chunk.section || '',
       checksum: document.checksum,
       version: document.version,
+      ...(document.product ? { product: document.product } : {}),
+      ...(document.documentType ? { documentType: document.documentType } : {}),
+      ...(document.documentVersion ? { documentVersion: document.documentVersion } : {}),
       ...(chunk.page !== undefined ? { page: chunk.page } : {})
     }
   }));

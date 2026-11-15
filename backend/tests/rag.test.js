@@ -14,7 +14,8 @@ function makeApp() {
     withTargetLock: vi.fn((_target, callback) => callback())
   };
   const generation = { answer: vi.fn().mockResolvedValue({ status: 'answered', answer: 'Update the payment method.', citationIds: ['chunk-1'], usage: null }) };
-  return { app: createApp({ config, clients: { local: {}, cloud: {} }, services: { repository, embeddings, registry, generation } }), repository, embeddings, generation, registry };
+  const ingestion = { ingest: vi.fn().mockResolvedValue({ id: 'doc-1', target: 'local', name: 'guide.md', status: 'ready', chunkCount: 1, product: 'billing' }) };
+  return { app: createApp({ config, clients: { local: {}, cloud: {} }, services: { repository, embeddings, registry, generation, ingestion } }), repository, embeddings, generation, registry, ingestion };
 }
 
 describe('RAG routes', () => {
@@ -46,11 +47,58 @@ describe('RAG routes', () => {
     expect((await request(app).post('/api/v1/documents').field('target', 'local')).status).toBe(400);
   });
 
+  it('accepts upload labels and forwards normalized metadata', async () => {
+    const { app, ingestion } = makeApp();
+    const response = await request(app).post('/api/v1/documents')
+      .field('target', 'local').field('product', ' billing ').field('documentType', 'guide').field('documentVersion', 'v2')
+      .attach('file', Buffer.from('# Billing\n\nUse the API.'), 'guide.md');
+    expect(response.status).toBe(201);
+    expect(ingestion.ingest).toHaveBeenCalledWith(expect.objectContaining({
+      target: 'local', metadata: { product: 'billing', documentType: 'guide', documentVersion: 'v2' }
+    }));
+  });
+
+  it('rejects malformed upload labels at the boundary', async () => {
+    const { app, ingestion } = makeApp();
+    const response = await request(app).post('/api/v1/documents')
+      .field('target', 'local').field('product', '   ')
+      .attach('file', Buffer.from('content'), 'guide.md');
+    expect(response.status).toBe(400);
+    expect(ingestion.ingest).not.toHaveBeenCalled();
+  });
+
   it('rejects malformed retrieval limits instead of clamping them', async () => {
     const { app } = makeApp();
     expect((await request(app).post('/api/v1/retrieval').send({ question: 'x', nResults: 0 })).status).toBe(400);
     expect((await request(app).post('/api/v1/retrieval').send({ question: 'x', topK: 11 })).status).toBe(400);
     expect((await request(app).post('/api/v1/retrieval').send({ question: 'x', nResults: '4' })).status).toBe(400);
+  });
+
+  it.each(['product', 'documentType', 'documentVersion'])('rejects explicitly supplied null, empty, and whitespace-only %s filters', async (field) => {
+    const { app, repository } = makeApp();
+    for (const value of [null, '', '   ']) {
+      const response = await request(app).post('/api/v1/retrieval').send({ question: 'x', filters: { [field]: value } });
+      expect(response.status).toBe(400);
+    }
+    expect(repository.query).not.toHaveBeenCalled();
+  });
+
+  it('keeps metadata filters optional when omitted', async () => {
+    const { app } = makeApp();
+    const response = await request(app).post('/api/v1/retrieval').send({ question: 'x' });
+    expect(response.status).toBe(200);
+    expect(response.body.filters).toEqual({});
+  });
+
+  it('rejects unknown retrieval modes and avoids generation on empty filtered results', async () => {
+    const first = makeApp();
+    expect((await request(first.app).post('/api/v1/retrieval').send({ question: 'x', mode: 'unknown' })).status).toBe(400);
+    const second = makeApp();
+    second.repository.query.mockResolvedValue([]);
+    const response = await request(second.app).post('/api/v1/answers').send({ question: 'x', filters: { product: 'missing' } });
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('insufficient_context');
+    expect(second.generation.answer).not.toHaveBeenCalled();
   });
 
   it('omits internal upload paths from document responses', async () => {

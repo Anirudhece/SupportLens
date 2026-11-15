@@ -3,6 +3,7 @@ import path from 'node:path';
 import { chunkDocument, chunkingVersion } from '../chunking/chunkDocument.js';
 import { extractDocument } from '../loaders/documentLoaders.js';
 import { documentChecksum, persistUpload } from './documentRegistry.js';
+import { normalizeMetadataLabels } from '../validation/metadata.js';
 
 export function createIngestionService({ config, embeddings, repository, registry }) {
   if (typeof registry?.withTargetLock !== 'function') {
@@ -13,7 +14,8 @@ export function createIngestionService({ config, embeddings, repository, registr
   const chunkOverlap = config.rag.chunkOverlap ?? 15;
   const withTargetLock = registry.withTargetLock.bind(registry);
   return {
-    async ingest({ buffer, originalName, mimeType, target }) {
+    async ingest({ buffer, originalName, mimeType, target, metadata = {} }) {
+      const labels = normalizeMetadataLabels(metadata);
       return withTargetLock(target, async () => {
         const checksum = documentChecksum(buffer);
         const previous = await registry.findByChecksum(checksum, target);
@@ -39,7 +41,7 @@ export function createIngestionService({ config, embeddings, repository, registr
           id: `${id}-${index}`,
           content: chunk.content,
           embedding: vectors[index],
-          metadata: { documentId: id, source: originalName, section: chunk.section || '', checksum, version, ...(chunk.page ? { page: chunk.page } : {}) }
+          metadata: { documentId: id, source: originalName, section: chunk.section || '', checksum, version, ...labels, ...(chunk.page ? { page: chunk.page } : {}) }
         }));
         await repository.addChunks(target, chunks);
         const document = {
@@ -56,7 +58,8 @@ export function createIngestionService({ config, embeddings, repository, registr
             overlapTokens: chunkOverlap
           }),
           storedPath: filePath,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          ...labels
         };
         return registry.add(document);
       });
